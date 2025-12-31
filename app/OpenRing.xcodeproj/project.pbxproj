@@ -1,0 +1,368 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		8B90D1482DEDD44A00FBD189 /* OpenRingFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 8B90D1472DEDD44A00FBD189 /* OpenRingFeature */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		8BC265752DEDD3F500F279A4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8BC265542DEDD3F400F279A4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8BC2655B2DEDD3F400F279A4;
+			remoteInfo = OpenRing;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		8B90D14A2DEDD44A00FBD189 /* OpenRingPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = OpenRingPackage; sourceTree = "<group>"; };
+		8BC2655C2DEDD3F400F279A4 /* OpenRing.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenRing.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8BC265742DEDD3F500F279A4 /* OpenRing.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenRing.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8BD71C1E2DEE424400CEDD92 /* Exceptions for "Config" folder in "OpenRing" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Debug.xcconfig,
+				Release.xcconfig,
+				Shared.xcconfig,
+				Tests.xcconfig,
+			);
+			target = 8BC2655B2DEDD3F400F279A4 /* OpenRing */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		8B90D1BC2DEE373300FBD189 /* Config */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8BD71C1E2DEE424400CEDD92 /* Exceptions for "Config" folder in "OpenRing" target */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		8BC2655E2DEDD3F400F279A4 /* OpenRing */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = OpenRing;
+			sourceTree = "<group>";
+		};
+		8BC265772DEDD3F500F279A4 /* OpenRingUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = OpenRingUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8BC265592DEDD3F400F279A4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8B90D1482DEDD44A00FBD189 /* OpenRingFeature in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8BC265712DEDD3F500F279A4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8B90D1462DEDD44A00FBD189 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		8BC265532DEDD3F400F279A4 = {
+			isa = PBXGroup;
+			children = (
+				8B90D14A2DEDD44A00FBD189 /* OpenRingPackage */,
+				8B90D1BC2DEE373300FBD189 /* Config */,
+				8BC2655E2DEDD3F400F279A4 /* OpenRing */,
+				8BC265772DEDD3F500F279A4 /* OpenRingUITests */,
+				8B90D1462DEDD44A00FBD189 /* Frameworks */,
+				8BC2655D2DEDD3F400F279A4 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		8BC2655D2DEDD3F400F279A4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8BC2655C2DEDD3F400F279A4 /* OpenRing.app */,
+				8BC265742DEDD3F500F279A4 /* OpenRing.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8BC2655B2DEDD3F400F279A4 /* OpenRing */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8BC2657E2DEDD3F500F279A4 /* Build configuration list for PBXNativeTarget "OpenRing" */;
+			buildPhases = (
+				8BC265582DEDD3F400F279A4 /* Sources */,
+				8BC265592DEDD3F400F279A4 /* Frameworks */,
+				8BC2655A2DEDD3F400F279A4 /* Resources */,
+				8BC265902DEFF00000000001 /* Embed WebRTC Framework */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				8B90D1BC2DEE373300FBD189 /* Config */,
+				8BC2655E2DEDD3F400F279A4 /* OpenRing */,
+			);
+			name = OpenRing;
+			packageProductDependencies = (
+				8B90D1472DEDD44A00FBD189 /* OpenRingFeature */,
+			);
+			productName = OpenRing;
+			productReference = 8BC2655C2DEDD3F400F279A4 /* OpenRing.app */;
+			productType = "com.apple.product-type.application";
+		};
+		8BC265732DEDD3F500F279A4 /* OpenRingUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8BC265842DEDD3F500F279A4 /* Build configuration list for PBXNativeTarget "OpenRingUITests" */;
+			buildPhases = (
+				8BC265702DEDD3F500F279A4 /* Sources */,
+				8BC265712DEDD3F500F279A4 /* Frameworks */,
+				8BC265722DEDD3F500F279A4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8BC265762DEDD3F500F279A4 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				8BC265772DEDD3F500F279A4 /* OpenRingUITests */,
+			);
+			name = OpenRingUITests;
+			packageProductDependencies = (
+			);
+			productName = OpenRingUITests;
+			productReference = 8BC265742DEDD3F500F279A4 /* OpenRing.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8BC265542DEDD3F400F279A4 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1630;
+				LastUpgradeCheck = 1630;
+				ORGANIZATIONNAME = "$(ORGANIZATION_NAME)";
+				TargetAttributes = {
+					8BC2655B2DEDD3F400F279A4 = {
+						CreatedOnToolsVersion = 16.3;
+					};
+					8BC265732DEDD3F500F279A4 = {
+						CreatedOnToolsVersion = 16.3;
+						TestTargetID = 8BC2655B2DEDD3F400F279A4;
+					};
+				};
+			};
+			buildConfigurationList = 8BC265572DEDD3F400F279A4 /* Build configuration list for PBXProject "OpenRing" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 8BC265532DEDD3F400F279A4;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8B90D1492DEDD44A00FBD189 /* XCLocalSwiftPackageReference "OpenRingPackage" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8BC2655D2DEDD3F400F279A4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8BC2655B2DEDD3F400F279A4 /* OpenRing */,
+				8BC265732DEDD3F500F279A4 /* OpenRingUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8BC2655A2DEDD3F400F279A4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8BC265722DEDD3F500F279A4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8BC265582DEDD3F400F279A4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8BC265702DEDD3F500F279A4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		8BC265762DEDD3F500F279A4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8BC2655B2DEDD3F400F279A4 /* OpenRing */;
+			targetProxy = 8BC265752DEDD3F500F279A4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		8BC265902DEFF00000000001 /* Embed WebRTC Framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Embed WebRTC Framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Find and embed the WebRTC framework\nFRAMEWORK_PATH=\"${BUILD_DIR}/../../SourcePackages/artifacts/webrtc/WebRTC/WebRTC.xcframework\"\nDEST_DIR=\"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\n\nif [ -d \"$FRAMEWORK_PATH\" ]; then\n    mkdir -p \"$DEST_DIR\"\n    \n    # Select the right architecture\n    if [ \"$PLATFORM_NAME\" = \"macosx\" ]; then\n        ARCH_PATH=\"$FRAMEWORK_PATH/macos-x86_64_arm64/WebRTC.framework\"\n    fi\n    \n    if [ -d \"$ARCH_PATH\" ]; then\n        cp -R \"$ARCH_PATH\" \"$DEST_DIR/\"\n        echo \"Embedded WebRTC.framework from $ARCH_PATH\"\n        \n        # Codesign the embedded framework\n        if [ -n \"$EXPANDED_CODE_SIGN_IDENTITY\" ]; then\n            codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" \"$DEST_DIR/WebRTC.framework\"\n        fi\n    else\n        echo \"warning: Could not find WebRTC.framework for architecture\"\n    fi\nelse\n    echo \"warning: WebRTC.xcframework not found at $FRAMEWORK_PATH\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		8BC2657C2DEDD3F500F279A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		8BC2657D2DEDD3F500F279A4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		8BC2657F2DEDD3F500F279A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 8B90D1BC2DEE373300FBD189 /* Config */;
+			baseConfigurationReferenceRelativePath = Debug.xcconfig;
+			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = "$(PRODUCT_DISPLAY_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		8BC265802DEDD3F500F279A4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 8B90D1BC2DEE373300FBD189 /* Config */;
+			baseConfigurationReferenceRelativePath = Release.xcconfig;
+			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = "$(PRODUCT_DISPLAY_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		8BC265852DEDD3F500F279A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 8B90D1BC2DEE373300FBD189 /* Config */;
+			baseConfigurationReferenceRelativePath = Tests.xcconfig;
+			buildSettings = {
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		8BC265862DEDD3F500F279A4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 8B90D1BC2DEE373300FBD189 /* Config */;
+			baseConfigurationReferenceRelativePath = Tests.xcconfig;
+			buildSettings = {
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8BC265572DEDD3F400F279A4 /* Build configuration list for PBXProject "OpenRing" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8BC2657C2DEDD3F500F279A4 /* Debug */,
+				8BC2657D2DEDD3F500F279A4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8BC2657E2DEDD3F500F279A4 /* Build configuration list for PBXNativeTarget "OpenRing" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8BC2657F2DEDD3F500F279A4 /* Debug */,
+				8BC265802DEDD3F500F279A4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8BC265842DEDD3F500F279A4 /* Build configuration list for PBXNativeTarget "OpenRingUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8BC265852DEDD3F500F279A4 /* Debug */,
+				8BC265862DEDD3F500F279A4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		8B90D1492DEDD44A00FBD189 /* XCLocalSwiftPackageReference "OpenRingPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = OpenRingPackage;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8B90D1472DEDD44A00FBD189 /* OpenRingFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8B90D1492DEDD44A00FBD189 /* XCLocalSwiftPackageReference "OpenRingPackage" */;
+			productName = OpenRingFeature;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 8BC265542DEDD3F400F279A4 /* Project object */;
+}
