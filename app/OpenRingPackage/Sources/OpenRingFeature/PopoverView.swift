@@ -66,12 +66,12 @@ public struct PopoverView: View {
         playingVideoURL != nil || isLoadingVideo ? 320 : 200
     }
 
-    // Calculate popover size based on state (with scale applied)
+    // Calculate popover size - use max size (drawer expanded) since MenuBarExtra can't resize
     private var popoverSize: CGSize {
         let scale = CGFloat(windowScale)
         if showLiveView, let device = selectedDevice {
-            // Drawer height depends on expanded state (always shown now)
-            let drawerHeight: CGFloat = isDrawerExpanded ? drawerExpandedHeight : drawerHandleHeight
+            // Always use expanded drawer height since window can't resize
+            let drawerHeight: CGFloat = drawerExpandedHeight
 
             switch device.deviceType {
             case .doorbell:
@@ -169,7 +169,7 @@ public struct PopoverView: View {
                         // Footer bar
                         footerBarView
                     }
-                    .frame(width: popoverSize.width, height: popoverSize.height)
+                    .frame(width: popoverSize.width)
                 } else {
                     // Fallback - shouldn't happen in live-first design
                     // Show loading/connecting state
