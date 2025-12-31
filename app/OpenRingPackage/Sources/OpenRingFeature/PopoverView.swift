@@ -59,6 +59,7 @@ public struct PopoverView: View {
 
     // Drawer heights
     private let drawerHandleHeight: CGFloat = 28
+    private let footerHeight: CGFloat = 36
     private var drawerExpandedHeight: CGFloat {
         // Panel needs: timeline ~50 + video ~120 + input ~50 + response ~120 = 340px max
         // But video only shows when playing, so base is ~220px
@@ -69,20 +70,18 @@ public struct PopoverView: View {
     private var popoverSize: CGSize {
         let scale = CGFloat(windowScale)
         if showLiveView, let device = selectedDevice {
-            // Drawer height depends on expanded state
-            let drawerHeight: CGFloat = hasAnthropicAPIKey
-                ? (isDrawerExpanded ? drawerExpandedHeight : drawerHandleHeight)
-                : 0
+            // Drawer height depends on expanded state (always shown now)
+            let drawerHeight: CGFloat = isDrawerExpanded ? drawerExpandedHeight : drawerHandleHeight
 
             switch device.deviceType {
             case .doorbell:
-                // Portrait doorbell: 340x500 video + drawer
-                return CGSize(width: 340 * scale, height: (500 + drawerHeight) * scale)
+                // Portrait doorbell: 340x500 video + drawer + footer
+                return CGSize(width: 340 * scale, height: (500 + drawerHeight + footerHeight) * scale)
             case .camera:
-                // Landscape camera: 480x270 video + drawer
-                return CGSize(width: 480 * scale, height: (270 + drawerHeight) * scale)
+                // Landscape camera: 480x270 video + drawer + footer
+                return CGSize(width: 480 * scale, height: (270 + drawerHeight + footerHeight) * scale)
             default:
-                return CGSize(width: 400 * scale, height: (300 + drawerHeight) * scale)
+                return CGSize(width: 400 * scale, height: (300 + drawerHeight + footerHeight) * scale)
             }
         } else {
             // Default menu view
@@ -130,7 +129,7 @@ public struct PopoverView: View {
 
             VStack(spacing: 0) {
                 if showLiveView, let device = selectedDevice {
-                    // Stacked layout: video on top, AI panel below
+                    // Stacked layout: video on top, drawer, then footer
                     VStack(spacing: 0) {
                         // Live video with camera switching
                         MultiStreamVideoView(
@@ -149,25 +148,26 @@ public struct PopoverView: View {
                         )
                         .frame(height: videoHeight)
 
-                        // Collapsible drawer with AI Panel (only shown if API key is configured)
-                        if hasAnthropicAPIKey {
-                            DrawerPanel(
-                                isExpanded: $isDrawerExpanded,
-                                expandedHeight: drawerExpandedHeight
-                            ) {
-                                AIOverlayPanel(
-                                    queryText: $aiQueryText,
-                                    response: $aiResponse,
-                                    isLoading: $isAILoading,
-                                    playingVideoURL: $playingVideoURL,
-                                    isLoadingVideo: $isLoadingVideo,
-                                    events: events,
-                                    onSubmit: { submitLiveAIQuery() },
-                                    onCapture: { captureLiveFrame() },
-                                    onEventTap: { event in playEvent(event) }
-                                )
-                            }
+                        // Collapsible drawer with AI Panel (always shown, but AI requires API key)
+                        DrawerPanel(
+                            isExpanded: $isDrawerExpanded,
+                            expandedHeight: drawerExpandedHeight
+                        ) {
+                            AIOverlayPanel(
+                                queryText: $aiQueryText,
+                                response: $aiResponse,
+                                isLoading: $isAILoading,
+                                playingVideoURL: $playingVideoURL,
+                                isLoadingVideo: $isLoadingVideo,
+                                events: events,
+                                onSubmit: { submitLiveAIQuery() },
+                                onCapture: { captureLiveFrame() },
+                                onEventTap: { event in playEvent(event) }
+                            )
                         }
+
+                        // Footer bar
+                        footerBarView
                     }
                     .frame(width: popoverSize.width, height: popoverSize.height)
                 } else {
@@ -189,7 +189,6 @@ public struct PopoverView: View {
             }
         }
         .frame(width: popoverSize.width)
-        .padding(.top, -20)  // Pull content up into window title bar area
         .animation(.easeInOut(duration: 0.2), value: showLiveView)
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isDrawerExpanded)
         .onChange(of: isDrawerExpanded) { _, newValue in
@@ -229,14 +228,12 @@ public struct PopoverView: View {
                 await streamManager.stopAllStreams()
             }
         }
-        .overlay(alignment: .bottom) { footerBar }
     }
 
     // MARK: - Footer Bar with Settings, Branding, and Scale Controls
 
     @ViewBuilder
-    private var footerBar: some View {
-        if showLiveView {
+    private var footerBarView: some View {
             ZStack {
                 // App name (absolutely centered)
                 Text("open-ring")
@@ -304,7 +301,7 @@ public struct PopoverView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
-        }
+            .frame(height: footerHeight)
     }
 
     // MARK: - Live AI Commands
