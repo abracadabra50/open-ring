@@ -1,13 +1,14 @@
 import SwiftUI
 
 // MARK: - Drawer Panel
-// A collapsible drawer with a dotted handle - content slides up/down within fixed space
+// A collapsible drawer with a 3x3 grid handle and curved bottom edges
 
 public struct DrawerPanel<Content: View>: View {
     @Binding var isExpanded: Bool
 
-    private let handleHeight: CGFloat = 28
+    private let handleHeight: CGFloat = 20
     private let expandedHeight: CGFloat
+    private let cornerRadius: CGFloat = 16
     private let content: () -> Content
 
     public init(
@@ -22,53 +23,60 @@ public struct DrawerPanel<Content: View>: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            // Dotted drag handle - always visible
-            dottedHandle
+            // Curved top edge with handle
+            handleArea
 
-            // Content area - fixed height, content slides in/out
-            ZStack(alignment: .top) {
-                // Always reserve the space
-                Color.clear
+            // Content area - only shows when expanded
+            if isExpanded {
+                content()
                     .frame(height: expandedHeight - handleHeight)
-
-                // Content slides in from bottom
-                if isExpanded {
-                    content()
-                        .frame(height: expandedHeight - handleHeight)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .clipped()
         }
-        .frame(height: expandedHeight)
-        .animation(.easeInOut(duration: 0.3), value: isExpanded)
+        .frame(height: isExpanded ? expandedHeight : handleHeight)
+        .background(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(Color.black.opacity(0.3))
+        )
+        .clipShape(
+            UnevenRoundedRectangle(
+                topLeadingRadius: cornerRadius,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: cornerRadius,
+                style: .continuous
+            )
+        )
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isExpanded)
     }
 
-    // MARK: - Dotted Handle
+    // MARK: - Handle Area with 3x3 Grid
 
-    private var dottedHandle: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<5, id: \.self) { _ in
-                Circle()
-                    .fill(.white.opacity(isExpanded ? 0.4 : 0.6))
-                    .frame(width: 5, height: 5)
+    private var handleArea: some View {
+        VStack(spacing: 0) {
+            // 3x3 dot grid - compact
+            VStack(spacing: 2) {
+                ForEach(0..<3, id: \.self) { row in
+                    HStack(spacing: 2) {
+                        ForEach(0..<3, id: \.self) { col in
+                            Circle()
+                                .fill(.white.opacity(0.5))
+                                .frame(width: 3, height: 3)
+                        }
+                    }
+                }
             }
+            .padding(.vertical, 4)
         }
         .frame(height: handleHeight)
         .frame(maxWidth: .infinity)
-        .background(Color.black.opacity(0.01)) // Invisible but tappable
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.3)) {
+            NSLog("🔔 Drawer handle tapped! Current state: \(isExpanded), toggling...")
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 isExpanded.toggle()
             }
-        }
-        // Visual cue - rotate dots or show arrow
-        .overlay(alignment: .trailing) {
-            Image(systemName: isExpanded ? "chevron.down" : "chevron.up")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.white.opacity(0.3))
-                .padding(.trailing, 12)
+            NSLog("🔔 Drawer new state: \(isExpanded)")
         }
     }
 }
@@ -103,7 +111,6 @@ struct DrawerPanel_Previews: PreviewProvider {
                         .background(Color.white.opacity(0.05))
                     }
 
-                    // Footer
                     Text("Footer")
                         .frame(height: 36)
                         .frame(maxWidth: .infinity)
