@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="docs/icon.png" width="128" height="128" alt="OpenRing Icon">
-</p>
-
 <h1 align="center">OpenRing</h1>
 
 <p align="center">
