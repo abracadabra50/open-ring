@@ -1,7 +1,7 @@
 <h1 align="center">OpenRing</h1>
 
 <p align="center">
-  <strong>A native macOS menu bar app for Ring doorbells and cameras</strong>
+  <strong>An unofficial native macOS menu bar app for Ring doorbells and cameras</strong>
 </p>
 
 <p align="center">
