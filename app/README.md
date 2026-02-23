@@ -1,30 +1,30 @@
-# OpenRing - macOS App
+# OpenCamera - macOS App
 
 A modern macOS application using a **workspace + SPM package** architecture for clean separation between app shell and feature code.
 
 ## Project Architecture
 
 ```
-OpenRing/
-├── OpenRing.xcworkspace/              # Open this file in Xcode
-├── OpenRing.xcodeproj/                # App shell project
-├── OpenRing/                          # App target (minimal)
+OpenCamera/
+├── OpenCamera.xcworkspace/              # Open this file in Xcode
+├── OpenCamera.xcodeproj/                # App shell project
+├── OpenCamera/                          # App target (minimal)
 │   ├── Assets.xcassets/                # App-level assets (icons, colors)
-│   ├── OpenRingApp.swift              # App entry point
-│   ├── OpenRing.entitlements          # App sandbox settings
-│   └── OpenRing.xctestplan            # Test configuration
-├── OpenRingPackage/                   # 🚀 Primary development area
+│   ├── OpenCameraApp.swift              # App entry point
+│   ├── OpenCamera.entitlements          # App sandbox settings
+│   └── OpenCamera.xctestplan            # Test configuration
+├── OpenCameraPackage/                   # 🚀 Primary development area
 │   ├── Package.swift                   # Package configuration
-│   ├── Sources/OpenRingFeature/       # Your feature code
-│   └── Tests/OpenRingFeatureTests/    # Unit tests
-└── OpenRingUITests/                   # UI automation tests
+│   ├── Sources/OpenCameraFeature/       # Your feature code
+│   └── Tests/OpenCameraFeatureTests/    # Unit tests
+└── OpenCameraUITests/                   # UI automation tests
 ```
 
 ## Key Architecture Points
 
 ### Workspace + SPM Structure
-- **App Shell**: `OpenRing/` contains minimal app lifecycle code
-- **Feature Code**: `OpenRingPackage/Sources/OpenRingFeature/` is where most development happens
+- **App Shell**: `OpenCamera/` contains minimal app lifecycle code
+- **Feature Code**: `OpenCameraPackage/Sources/OpenCameraFeature/` is where most development happens
 - **Separation**: Business logic lives in the SPM package, app target just imports and displays it
 
 ### Buildable Folders (Xcode 16)
@@ -33,12 +33,12 @@ OpenRing/
 - Reduces project file conflicts in teams
 
 ### App Sandbox
-The app is sandboxed by default with basic file access permissions. Modify `OpenRing.entitlements` to add capabilities as needed.
+The app is sandboxed by default with basic file access permissions. Modify `OpenCamera.entitlements` to add capabilities as needed.
 
 ## Development Notes
 
 ### Code Organization
-Most development happens in `OpenRingPackage/Sources/OpenRingFeature/` - organize your code as you prefer.
+Most development happens in `OpenCameraPackage/Sources/OpenCameraFeature/` - organize your code as you prefer.
 
 ### Public API Requirements
 Types exposed to the app target need `public` access:
@@ -53,23 +53,23 @@ public struct SettingsView: View {
 ```
 
 ### Adding Dependencies
-Edit `OpenRingPackage/Package.swift` to add SPM dependencies:
+Edit `OpenCameraPackage/Package.swift` to add SPM dependencies:
 ```swift
 dependencies: [
     .package(url: "https://github.com/example/SomePackage", from: "1.0.0")
 ],
 targets: [
     .target(
-        name: "OpenRingFeature",
+        name: "OpenCameraFeature",
         dependencies: ["SomePackage"]
     ),
 ]
 ```
 
 ### Test Structure
-- **Unit Tests**: `OpenRingPackage/Tests/OpenRingFeatureTests/` (Swift Testing framework)
-- **UI Tests**: `OpenRingUITests/` (XCUITest framework)
-- **Test Plan**: `OpenRing.xctestplan` coordinates all tests
+- **Unit Tests**: `OpenCameraPackage/Tests/OpenCameraFeatureTests/` (Swift Testing framework)
+- **UI Tests**: `OpenCameraUITests/` (XCUITest framework)
+- **Test Plan**: `OpenCamera.xctestplan` coordinates all tests
 
 ## Configuration
 
@@ -81,7 +81,7 @@ Build settings are managed through **XCConfig files** in `Config/`:
 - `Config/Tests.xcconfig` - Test-specific settings
 
 ### App Sandbox & Entitlements
-The app is sandboxed by default with basic file access. Edit `OpenRing/OpenRing.entitlements` to add capabilities:
+The app is sandboxed by default with basic file access. Edit `OpenCamera/OpenCamera.entitlements` to add capabilities:
 ```xml
 <key>com.apple.security.files.user-selected.read-write</key>
 <true/>
@@ -96,7 +96,7 @@ The app is sandboxed by default with basic file access. Edit `OpenRing/OpenRing.
 Add multiple windows and settings panels:
 ```swift
 @main
-struct OpenRingApp: App {
+struct OpenCameraApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -110,14 +110,14 @@ struct OpenRingApp: App {
 ```
 
 ### Asset Management
-- **App-Level Assets**: `OpenRing/Assets.xcassets/` (app icon with multiple sizes, accent color)
+- **App-Level Assets**: `OpenCamera/Assets.xcassets/` (app icon with multiple sizes, accent color)
 - **Feature Assets**: Add `Resources/` folder to SPM package if needed
 
 ### SPM Package Resources
 To include assets in your feature package:
 ```swift
 .target(
-    name: "OpenRingFeature",
+    name: "OpenCameraFeature",
     dependencies: [],
     resources: [.process("Resources")]
 )

@@ -6,8 +6,8 @@
 // ==========================================
 // Project Identity
 // ==========================================
-PRODUCT_NAME = OpenRing
-PRODUCT_DISPLAY_NAME = open-ring
+PRODUCT_NAME = OpenCamera
+PRODUCT_DISPLAY_NAME = open-camera
 PRODUCT_BUNDLE_IDENTIFIER = com.openring.app
 MARKETING_VERSION = 0.1.0
 CURRENT_PROJECT_VERSION = 1
@@ -25,8 +25,8 @@ GENERATE_INFOPLIST_FILE = YES
 // ==========================================
 // Entitlements
 // ==========================================
-// AI agents can modify Config/OpenRing.entitlements to add capabilities
-CODE_SIGN_ENTITLEMENTS = Config/OpenRing.entitlements
+// AI agents can modify Config/OpenCamera.entitlements to add capabilities
+CODE_SIGN_ENTITLEMENTS = Config/OpenCamera.entitlements
 
 // ==========================================
 // Framework Embedding

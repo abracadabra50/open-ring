@@ -1,16 +1,16 @@
-# open-ring
+# open-camera
 
 **A local-first Ring control room for macOS**
 
 ---
 
-## 0. What open-ring Is
+## 0. What open-camera Is
 
 A native macOS application that connects directly to your Ring account, ingests events (doorbell presses, motion, packages), caches snapshots/clips locally, and provides:
 
-- **Menubar app** (`open-ring.app`) — primary interface with live video, quick actions, notifications
-- **CLI/TUI** (`open-ring`) — power-user terminal interface for scripting and deep dives
-- **Daemon** (`open-ringd`) — optional background service for automation, plugins, and API access
+- **Menubar app** (`open-camera.app`) — primary interface with live video, quick actions, notifications
+- **CLI/TUI** (`open-camera`) — power-user terminal interface for scripting and deep dives
+- **Daemon** (`open-camerad`) — optional background service for automation, plugins, and API access
 
 Core design: **menubar is the product, CLI is the platform**. Most users interact via menubar. Hackers and automation enthusiasts use the CLI, daemon, and plugin system.
 
@@ -343,7 +343,7 @@ Both modes are first-class citizens. Test every component in both.
 **Text-only** (no thumbnails):
 ```
 ┌────────────────────────────────────────┐
-│ 🔔  open-ring                          │
+│ 🔔  open-camera                          │
 │ Ring — Front Door                      │
 │ Someone is at the door                 │
 │                            just now    │
@@ -385,7 +385,7 @@ Both modes are first-class citizens. Test every component in both.
                                               ▼
                                   ┌──────────────────────┐
                                   │   CLI / TUI          │
-                                  │   (open-ring)        │
+                                  │   (open-camera)        │
                                   │                      │
                                   │   • Interactive mode │
                                   │   • Scripting        │
@@ -404,7 +404,7 @@ Both modes are first-class citizens. Test every component in both.
 - Stores auth tokens in macOS Keychain
 - Caches events/snapshots to SQLite
 
-**B. Daemon (`open-ringd`)** — Optional, enables power features
+**B. Daemon (`open-camerad`)** — Optional, enables power features
 - Exposes documented REST API on `127.0.0.1:8199`
 - WebSocket for real-time event streaming
 - Lua plugin runtime for custom rules/actions
@@ -412,10 +412,10 @@ Both modes are first-class citizens. Test every component in both.
 - Shared cache with menubar app
 - Required for TUI operation
 
-**C. CLI/TUI (`open-ring`)** — Terminal interface
+**C. CLI/TUI (`open-camera`)** — Terminal interface
 - Talks to daemon's local API
-- Interactive curses-style TUI (`open-ring --tui` or `open-ring tui`)
-- CLI commands for scripting (`open-ring events`, `open-ring snooze 1h`)
+- Interactive curses-style TUI (`open-camera --tui` or `open-camera tui`)
+- CLI commands for scripting (`open-camera events`, `open-camera snooze 1h`)
 - Export capabilities (CSV, JSON)
 
 ---
@@ -436,14 +436,14 @@ Both modes are first-class citizens. Test every component in both.
 Ring uses a proprietary auth flow (not standard OAuth). The Swift client implements:
 
 ### Login Flow
-1. User runs `open-ring login` (terminal) or clicks "Login" in menubar preferences
+1. User runs `open-camera login` (terminal) or clicks "Login" in menubar preferences
 2. Prompt: email + password
 3. Ring returns 2FA challenge (SMS or email code)
 4. **Terminal fallback**: If launched from menubar, show "Complete login in terminal"
 5. User enters 2FA code in terminal
 6. Tokens stored in macOS Keychain:
-   - `open-ring.refresh-token`
-   - `open-ring.hardware-id` (device fingerprint)
+   - `open-camera.refresh-token`
+   - `open-camera.hardware-id` (device fingerprint)
 
 ### Token Refresh
 - Refresh token automatically before expiry
@@ -459,11 +459,11 @@ Ring uses a proprietary auth flow (not standard OAuth). The Swift client impleme
 
 ## 6. Local Storage
 
-**Location**: `~/Library/Application Support/open-ring/`
+**Location**: `~/Library/Application Support/open-camera/`
 
 ```
-open-ring/
-├── open-ring.db          # SQLite database
+open-camera/
+├── open-camera.db          # SQLite database
 ├── snapshots/            # Cached snapshot images
 │   └── 2024-01-15/
 │       └── abc123.jpg
@@ -585,7 +585,7 @@ Clicking menubar icon opens a popover with:
 
 ```
 ┌─────────────────────────────────────────┐
-│  open-ring                    ⚙️  ✕     │
+│  open-camera                    ⚙️  ✕     │
 ├─────────────────────────────────────────┤
 │  ┌─────────────────────────────────┐    │
 │  │                                 │    │
@@ -639,7 +639,7 @@ Right-click menubar icon:
 ### Notification Content (text-only, no thumbnails)
 ```
 ┌────────────────────────────────────┐
-│ 🔔 open-ring                       │
+│ 🔔 open-camera                       │
 │ Ring — Front Door                  │
 │ Someone is at the door             │
 │                          2:36 PM   │
@@ -776,61 +776,61 @@ Messages:
 
 ```bash
 # Authentication
-open-ring login                    # Interactive login with 2FA
-open-ring logout                   # Clear stored credentials
-open-ring auth status              # Check auth state
+open-camera login                    # Interactive login with 2FA
+open-camera logout                   # Clear stored credentials
+open-camera auth status              # Check auth state
 
 # Devices
-open-ring devices                  # List all devices
-open-ring devices show <id>        # Device details
+open-camera devices                  # List all devices
+open-camera devices show <id>        # Device details
 
 # Events
-open-ring events                   # Recent events (default: 24h)
-open-ring events --since 7d        # Last 7 days
-open-ring events --device "Front Door"
-open-ring events --kind ring       # Only ring events
+open-camera events                   # Recent events (default: 24h)
+open-camera events --since 7d        # Last 7 days
+open-camera events --device "Front Door"
+open-camera events --kind ring       # Only ring events
 
 # Live View
-open-ring live                     # Live view of default device
-open-ring live "Front Door"        # Specific device
-open-ring live --mpv               # Force mpv player
+open-camera live                     # Live view of default device
+open-camera live "Front Door"        # Specific device
+open-camera live --mpv               # Force mpv player
 
 # Clips & Snapshots
-open-ring clips                    # List recent clips
-open-ring clips download <id>      # Download a clip
-open-ring snapshot <device>        # Capture current snapshot
+open-camera clips                    # List recent clips
+open-camera clips download <id>      # Download a clip
+open-camera snapshot <device>        # Capture current snapshot
 
 # Notifications
-open-ring snooze 1h                # Snooze for 1 hour
-open-ring snooze --until 07:00     # Snooze until time
-open-ring snooze cancel            # Cancel snooze
+open-camera snooze 1h                # Snooze for 1 hour
+open-camera snooze --until 07:00     # Snooze until time
+open-camera snooze cancel            # Cancel snooze
 
 # Export
-open-ring export events --format csv --output events.csv
-open-ring export clips --since 7d --output clips/
+open-camera export events --format csv --output events.csv
+open-camera export clips --since 7d --output clips/
 
 # Rules & Webhooks
-open-ring rules list
-open-ring rules add --name "Late night ring" --file rule.lua
-open-ring rules test <id>
-open-ring webhooks list
-open-ring webhooks add --url https://example.com/hook --events ring,motion
+open-camera rules list
+open-camera rules add --name "Late night ring" --file rule.lua
+open-camera rules test <id>
+open-camera webhooks list
+open-camera webhooks add --url https://example.com/hook --events ring,motion
 
 # Daemon
-open-ring daemon start             # Start daemon in background
-open-ring daemon stop              # Stop daemon
-open-ring daemon status            # Check daemon status
+open-camera daemon start             # Start daemon in background
+open-camera daemon stop              # Stop daemon
+open-camera daemon status            # Check daemon status
 
 # Interactive TUI
-open-ring tui                      # Launch interactive TUI
-open-ring --tui                    # Alias
+open-camera tui                      # Launch interactive TUI
+open-camera --tui                    # Alias
 ```
 
 ### Interactive TUI
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
-║ open-ring                                        snooze: OFF     ║
+║ open-camera                                        snooze: OFF     ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║ [1] Devices  [2] Events  [3] Live  [4] Clips  [5] Rules  [?] Help║
 ╚══════════════════════════════════════════════════════════════════╝
@@ -886,7 +886,7 @@ Events trigger HTTP POST to configured URLs.
 
 ### Configuration
 ```bash
-open-ring webhooks add \
+open-camera webhooks add \
   --name "Home Assistant" \
   --url http://homeassistant.local:8123/api/webhook/ring \
   --events ring,motion,package \
@@ -904,7 +904,7 @@ open-ring webhooks add \
 Plugins enable custom automation rules.
 
 ### Plugin Location
-`~/Library/Application Support/open-ring/plugins/`
+`~/Library/Application Support/open-camera/plugins/`
 
 ### Plugin Structure
 ```lua
@@ -970,32 +970,32 @@ context.http_post(url, body, headers)               -- HTTP request (async)
 
 ### Homebrew Cask
 ```ruby
-cask "open-ring" do
+cask "open-camera" do
   version "0.1.0"
   sha256 "..."
 
-  url "https://github.com/user/open-ring/releases/download/v#{version}/open-ring-#{version}.dmg"
-  name "open-ring"
+  url "https://github.com/user/open-camera/releases/download/v#{version}/open-camera-#{version}.dmg"
+  name "open-camera"
   desc "Local-first Ring control room for macOS"
-  homepage "https://github.com/user/open-ring"
+  homepage "https://github.com/user/open-camera"
 
-  app "open-ring.app"
-  binary "#{appdir}/open-ring.app/Contents/MacOS/open-ring-cli", target: "open-ring"
+  app "open-camera.app"
+  binary "#{appdir}/open-camera.app/Contents/MacOS/open-camera-cli", target: "open-camera"
 
   zap trash: [
-    "~/Library/Application Support/open-ring",
-    "~/Library/Preferences/com.open-ring.plist",
-    "~/Library/Caches/com.open-ring"
+    "~/Library/Application Support/open-camera",
+    "~/Library/Preferences/com.open-camera.plist",
+    "~/Library/Caches/com.open-camera"
   ]
 end
 ```
 
 ### Installation
 ```bash
-brew install --cask open-ring
+brew install --cask open-camera
 
 # First run
-open-ring login
+open-camera login
 ```
 
 ### No Auto-Start
@@ -1006,9 +1006,9 @@ App does not install launch agent by default. User can add to Login Items manual
 ## 14. Project Structure
 
 ```
-open-ring/
+open-camera/
 ├── app/                          # Swift menubar app (Xcode project)
-│   ├── open-ring/
+│   ├── open-camera/
 │   │   ├── App.swift
 │   │   ├── MenuBarController.swift
 │   │   ├── PopoverView.swift
@@ -1023,7 +1023,7 @@ open-ring/
 │   │   │   ├── Database.swift
 │   │   │   └── Keychain.swift
 │   │   └── Notifications/
-│   └── open-ring.xcodeproj
+│   └── open-camera.xcodeproj
 ├── daemon/                       # Optional daemon (Swift or Rust)
 │   ├── src/
 │   │   ├── main.swift
@@ -1047,7 +1047,7 @@ open-ring/
 │   ├── release.sh
 │   └── install-dev.sh
 ├── Casks/
-│   └── open-ring.rb             # Homebrew cask formula
+│   └── open-camera.rb             # Homebrew cask formula
 ├── LICENSE                       # MIT
 ├── README.md
 └── CHANGELOG.md
@@ -1093,7 +1093,7 @@ open-ring/
 - [ ] Quiet hours respected
 - [ ] Motion alert toggle works
 - [ ] Silent badge on auth expiry (no intrusive alert)
-- [ ] CLI: `open-ring login`, `devices`, `events`, `snooze` work
+- [ ] CLI: `open-camera login`, `devices`, `events`, `snooze` work
 - [ ] Daemon starts and exposes API
 - [ ] Webhooks fire on events
 - [ ] Basic Lua plugin loads and executes

@@ -8,7 +8,7 @@
 // Test Target Settings (Customizable by scaffold tool)
 // ==========================================
 PRODUCT_BUNDLE_IDENTIFIER = com.openring.app
-TEST_TARGET_NAME = OpenRing
+TEST_TARGET_NAME = OpenCamera
 
 // Fix duplicate module name issue
 PRODUCT_MODULE_NAME = $(PRODUCT_NAME)UITests
