@@ -49,13 +49,13 @@ final class TapoHttpEventMonitor {
                         NSLog("📡 Tapo HTTP: Authenticated (mode: \(authState!.isSecure ? "secure" : "simple"), stok acquired)")
                     }
 
-                    guard let auth = authState else {
+                    guard authState != nil else {
                         throw TapoHttpError.authFailed("No auth state available")
                     }
 
                     let events = try await Self.pollDetectionList(
                         config: config,
-                        auth: auth,
+                        auth: &authState!,
                         session: session,
                         lastSeenTimestamp: lastSeenTimestamp
                     )
@@ -112,7 +112,7 @@ final class TapoHttpEventMonitor {
     /// Polls the camera's detection list for recent motion/person events
     private static func pollDetectionList(
         config: TapoSetupConfig,
-        auth: TapoAuthState,
+        auth: inout TapoAuthState,
         session: URLSession,
         lastSeenTimestamp: Int
     ) async throws -> [TapoDetectionEvent] {
@@ -150,9 +150,13 @@ final class TapoHttpEventMonitor {
         let (data, _) = try await TapoAuthenticator.sendRequest(
             url: url,
             payload: innerPayload,
-            auth: auth,
+            auth: &auth,
             session: session
         )
+
+        // Log raw decrypted response for debugging
+        let responseStr = String(decoding: data, as: UTF8.self)
+        NSLog("📡 Tapo HTTP: Raw poll response: \(responseStr.prefix(500))")
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw TapoHttpError.requestFailed("Invalid JSON response")
@@ -186,13 +190,18 @@ final class TapoHttpEventMonitor {
             guard let startTime = detection["start_time"] as? Int else { continue }
             guard startTime > lastSeenTimestamp else { continue }
 
-            let eventType = detection["type"] as? String ?? ""
+            // Determine event type from alarm_type field
+            // 2=motion, 4=line-crossing, 5=intrusion, 6=person+motion, 8=vehicle
+            let alarmType = detection["alarm_type"] as? Int ?? 0
             let kind: CameraEventKind
-            if eventType.lowercased().contains("person") || eventType.lowercased().contains("people") {
+            switch alarmType {
+            case 6:
                 kind = .person
-            } else {
+            default:
                 kind = .motion
             }
+
+            let detail = "alarm_type=\(alarmType), events_1=\(detection["events_1"] as? Int ?? 0)"
 
             let event = TapoDetectionEvent(
                 cameraEvent: CameraEvent(
@@ -201,7 +210,7 @@ final class TapoHttpEventMonitor {
                     kind: kind,
                     createdAt: Date(timeIntervalSince1970: TimeInterval(startTime)),
                     source: "tapo-http",
-                    detail: "Tapo HTTP API detection (\(eventType))"
+                    detail: detail
                 ),
                 startTime: startTime
             )
@@ -265,7 +274,7 @@ enum TapoAuthenticator {
             "method": "login",
             "params": [
                 "encrypt_type": "3",
-                "username": config.username,
+                "username": "admin",
                 "cnonce": cnonce
             ]
         ]
@@ -345,7 +354,7 @@ enum TapoAuthenticator {
             "params": [
                 "hashed": true,
                 "password": hashedMD5,
-                "username": config.username
+                "username": "admin"
             ]
         ]
 
@@ -422,7 +431,7 @@ enum TapoAuthenticator {
                 "cnonce": cnonce,
                 "encrypt_type": "3",
                 "digest_passwd": fullDigest,
-                "username": config.username
+                "username": "admin"
             ]
         ]
 
@@ -525,7 +534,7 @@ enum TapoAuthenticator {
     static func sendRequest(
         url: URL,
         payload: [String: Any],
-        auth: TapoAuthState,
+        auth: inout TapoAuthState,
         session: URLSession
     ) async throws -> (Data, URLResponse) {
         var headers = auth.headers
@@ -577,6 +586,10 @@ enum TapoAuthenticator {
             }
 
             let decrypted = try TapoCrypto.aesDecrypt(data: encryptedData, key: lsk, iv: ivb)
+            // Increment seq after successful request
+            if auth.seq != nil {
+                auth.seq! += 1
+            }
             return (decrypted, response)
         } else {
             // Simple mode: send plaintext

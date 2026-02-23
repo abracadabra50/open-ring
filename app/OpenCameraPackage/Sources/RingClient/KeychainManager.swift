@@ -90,9 +90,20 @@ public actor KeychainManager {
         try get(key: "tapo_password")
     }
 
+    // MARK: - Tapo Cloud Credentials (for HTTP API auth)
+
+    public func saveTapoCloudPassword(_ password: String) throws {
+        try save(key: "tapo_cloud_password", value: password)
+    }
+
+    public func getTapoCloudPassword() throws -> String? {
+        try get(key: "tapo_cloud_password")
+    }
+
     public func clearTapoCredentials() throws {
         try delete(key: "tapo_username")
         try delete(key: "tapo_password")
+        try delete(key: "tapo_cloud_password")
     }
 
     // MARK: - Generic Keychain Operations

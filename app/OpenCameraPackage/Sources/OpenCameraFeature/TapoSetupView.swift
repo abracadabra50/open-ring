@@ -7,6 +7,7 @@ public struct TapoSetupView: View {
         _ host: String,
         _ username: String,
         _ password: String,
+        _ cloudPassword: String,
         _ profile: CameraStreamProfile,
         _ rtspPort: Int,
         _ onvifPort: Int
@@ -16,6 +17,7 @@ public struct TapoSetupView: View {
         _ host: String,
         _ username: String,
         _ password: String,
+        _ cloudPassword: String,
         _ profile: CameraStreamProfile,
         _ rtspPort: Int,
         _ onvifPort: Int
@@ -24,6 +26,7 @@ public struct TapoSetupView: View {
     @State private var host = ""
     @State private var username = ""
     @State private var password = ""
+    @State private var cloudPassword = ""
     @State private var profile: CameraStreamProfile = .main
     @State private var rtspPort = "554"
     @State private var onvifPort = "2020"
@@ -38,6 +41,7 @@ public struct TapoSetupView: View {
             _ host: String,
             _ username: String,
             _ password: String,
+            _ cloudPassword: String,
             _ profile: CameraStreamProfile,
             _ rtspPort: Int,
             _ onvifPort: Int
@@ -46,6 +50,7 @@ public struct TapoSetupView: View {
             _ host: String,
             _ username: String,
             _ password: String,
+            _ cloudPassword: String,
             _ profile: CameraStreamProfile,
             _ rtspPort: Int,
             _ onvifPort: Int
@@ -83,8 +88,17 @@ public struct TapoSetupView: View {
 
                 VStack(spacing: Spacing.sm) {
                     textField("Camera IP / Hostname", text: $host)
-                    textField("Username", text: $username)
-                    SecureField("Password", text: $password)
+                    textField("Camera Account Username", text: $username)
+                    SecureField("Camera Account Password", text: $password)
+                        .textFieldStyle(.roundedBorder)
+
+                    Divider()
+                        .background(.white.opacity(0.2))
+
+                    Text("TP-Link Cloud (for event detection)")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.5))
+                    SecureField("TP-Link App Password", text: $cloudPassword)
                         .textFieldStyle(.roundedBorder)
 
                     Picker("Stream Profile", selection: $profile) {
@@ -142,7 +156,7 @@ public struct TapoSetupView: View {
             }
             .padding(Spacing.lg)
         }
-        .frame(width: 420, height: 460)
+        .frame(width: 420, height: 530)
     }
 
     private var canSubmit: Bool {
@@ -169,7 +183,7 @@ public struct TapoSetupView: View {
         isError = false
         statusMessage = nil
         do {
-            try await onTest(host, username, password, profile, rtspPort, onvifPort)
+            try await onTest(host, username, password, cloudPassword, profile, rtspPort, onvifPort)
             statusMessage = "Connection test passed."
             isError = false
         } catch {
@@ -187,7 +201,7 @@ public struct TapoSetupView: View {
         }
 
         isSaving = true
-        await onSave(host, username, password, profile, rtspPort, onvifPort)
+        await onSave(host, username, password, cloudPassword, profile, rtspPort, onvifPort)
         isSaving = false
     }
 }

@@ -85,6 +85,7 @@ public final class AppCameraController: ObservableObject {
         host: String,
         username: String,
         password: String,
+        cloudPassword: String,
         profile: CameraStreamProfile,
         rtspPort: Int,
         onvifPort: Int
@@ -93,6 +94,7 @@ public final class AppCameraController: ObservableObject {
             host: host,
             username: username,
             password: password,
+            cloudPassword: cloudPassword,
             profile: profile,
             rtspPort: rtspPort,
             onvifPort: onvifPort
@@ -103,6 +105,7 @@ public final class AppCameraController: ObservableObject {
         host: String,
         username: String,
         password: String,
+        cloudPassword: String,
         profile: CameraStreamProfile,
         rtspPort: Int,
         onvifPort: Int
@@ -113,6 +116,7 @@ public final class AppCameraController: ObservableObject {
                 host: host,
                 username: username,
                 password: password,
+                cloudPassword: cloudPassword,
                 profile: profile,
                 rtspPort: rtspPort,
                 onvifPort: onvifPort

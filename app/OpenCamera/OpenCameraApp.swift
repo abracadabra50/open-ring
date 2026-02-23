@@ -65,21 +65,23 @@ struct MainPopoverView: View {
         case .unconfigured:
             TapoSetupView(
                 summary: cameraController.setupSummary,
-                onTest: { host, username, password, profile, rtspPort, onvifPort in
+                onTest: { host, username, password, cloudPassword, profile, rtspPort, onvifPort in
                     try await cameraController.testSetup(
                         host: host,
                         username: username,
                         password: password,
+                        cloudPassword: cloudPassword,
                         profile: profile,
                         rtspPort: rtspPort,
                         onvifPort: onvifPort
                     )
                 },
-                onSave: { host, username, password, profile, rtspPort, onvifPort in
+                onSave: { host, username, password, cloudPassword, profile, rtspPort, onvifPort in
                     await cameraController.saveSetup(
                         host: host,
                         username: username,
                         password: password,
+                        cloudPassword: cloudPassword,
                         profile: profile,
                         rtspPort: rtspPort,
                         onvifPort: onvifPort

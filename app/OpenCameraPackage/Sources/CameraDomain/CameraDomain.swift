@@ -131,6 +131,7 @@ public protocol CameraProvider: AnyObject, Sendable {
         host: String,
         username: String,
         password: String,
+        cloudPassword: String,
         profile: CameraStreamProfile,
         rtspPort: Int,
         onvifPort: Int
@@ -140,6 +141,7 @@ public protocol CameraProvider: AnyObject, Sendable {
         host: String,
         username: String,
         password: String,
+        cloudPassword: String,
         profile: CameraStreamProfile,
         rtspPort: Int,
         onvifPort: Int

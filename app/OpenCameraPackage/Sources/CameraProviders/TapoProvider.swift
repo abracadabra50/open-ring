@@ -37,6 +37,7 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
     private var state: CameraConnectionState = .unconfigured
     private var config: TapoSetupConfig?
     private var password: String?
+    private var cloudPassword: String?
 
     private var activeSessions: [String: RtspPlayerSession] = [:]
     private var tapoHttpMonitor: TapoHttpEventMonitor?
@@ -70,6 +71,7 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
         host: String,
         username: String,
         password: String,
+        cloudPassword: String,
         profile: CameraStreamProfile,
         rtspPort: Int,
         onvifPort: Int
@@ -91,8 +93,12 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
 
         try TapoConfigStore.save(savedConfig)
         try await keychain.saveTapoCredentials(username: normalizedUsername, password: password)
+        if !cloudPassword.isEmpty {
+            try await keychain.saveTapoCloudPassword(cloudPassword)
+        }
         self.config = savedConfig
         self.password = password
+        self.cloudPassword = cloudPassword.isEmpty ? nil : cloudPassword
         state = .offline
     }
 
@@ -109,6 +115,7 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
         host: String,
         username: String,
         password: String,
+        cloudPassword: String,
         profile: CameraStreamProfile,
         rtspPort: Int,
         onvifPort: Int
@@ -129,6 +136,7 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
         }
 
         _ = password
+        _ = cloudPassword
     }
 
     public func currentConnectionState() async -> CameraConnectionState {
@@ -249,7 +257,9 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
 
             NSLog("📡 Starting Tapo HTTP event monitoring for \(config.host)")
 
-            let httpMonitor = TapoHttpEventMonitor(config: config, password: password)
+            // Use cloud password for HTTP API auth (falls back to camera password)
+            let httpPassword = try await keychain.getTapoCloudPassword() ?? password
+            let httpMonitor = TapoHttpEventMonitor(config: config, password: httpPassword)
             tapoHttpMonitor = httpMonitor
             httpMonitor.start(
                 onEvent: { [weak self] event in
@@ -377,6 +387,8 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
             throw CameraProviderError.notConfigured
         }
         self.password = storedPassword
+        // Also load cloud password if available
+        self.cloudPassword = try await keychain.getTapoCloudPassword()
         return (config, storedPassword)
     }
 
