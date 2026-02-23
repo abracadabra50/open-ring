@@ -37,26 +37,34 @@ final class SnapshotDiffEventMonitor {
         let operation: @Sendable () async -> Void = { [config, password, diffThreshold, callback] in
             var previousLuma: Double?
             var lastEmittedAt = Date.distantPast
+            NSLog("📸 Snapshot-diff fallback monitor started (threshold: \(diffThreshold))")
             while !Task.isCancelled {
                 if let luma = await Self.captureAverageLuma(config: config, password: password) {
                     if let previousLuma {
                         let delta = abs(previousLuma - luma)
                         let now = Date()
                         let debounceOK = now.timeIntervalSince(lastEmittedAt) > 8
-                        if delta >= diffThreshold && debounceOK {
-                            lastEmittedAt = now
-                            callback.emitMotionEvent(
-                                CameraEvent(
-                                    deviceId: config.deviceId,
-                                    deviceName: config.deviceName,
-                                    kind: .motion,
-                                    source: "fallback",
-                                    detail: "Snapshot-diff fallback"
+                        if delta >= diffThreshold {
+                            if debounceOK {
+                                NSLog("📸 Snapshot-diff motion detected (delta: \(String(format: "%.4f", delta)), threshold: \(diffThreshold))")
+                                lastEmittedAt = now
+                                callback.emitMotionEvent(
+                                    CameraEvent(
+                                        deviceId: config.deviceId,
+                                        deviceName: config.deviceName,
+                                        kind: .motion,
+                                        source: "fallback",
+                                        detail: "Snapshot-diff fallback"
+                                    )
                                 )
-                            )
+                            } else {
+                                NSLog("📸 Snapshot-diff motion suppressed by debounce (delta: \(String(format: "%.4f", delta)))")
+                            }
                         }
                     }
                     previousLuma = luma
+                } else {
+                    NSLog("📸 Snapshot-diff luma capture failed")
                 }
 
                 try? await Task.sleep(for: .seconds(2))

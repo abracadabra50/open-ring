@@ -19,12 +19,28 @@ public final class NotificationManager: NSObject, UNUserNotificationCenterDelega
     public func requestPermission() async -> Bool {
         do {
             let center = UNUserNotificationCenter.current()
+
+            // Log current authorization status for diagnostics
+            let settings = await center.notificationSettings()
+            NSLog("🔔 Current notification status: \(Self.statusDescription(settings.authorizationStatus))")
+
             let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
             NSLog("🔔 Notification permission: \(granted ? "granted" : "denied")")
             return granted
         } catch {
             NSLog("🔔 Notification permission error: \(error)")
             return false
+        }
+    }
+
+    private static func statusDescription(_ status: UNAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined: return "notDetermined"
+        case .denied: return "denied"
+        case .authorized: return "authorized"
+        case .provisional: return "provisional"
+        case .ephemeral: return "ephemeral"
+        @unknown default: return "unknown(\(status.rawValue))"
         }
     }
 

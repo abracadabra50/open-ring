@@ -14,6 +14,8 @@ public final class TapoStreamManager: ObservableObject {
 
     @Published public var streams: [String: StreamInfo] = [:]
     @Published public var isConnecting = false
+    @Published public private(set) var isMuted = true
+    @Published public private(set) var activeDeviceId: String?
 
     private var provider: (any CameraProvider)?
 
@@ -36,17 +38,35 @@ public final class TapoStreamManager: ObservableObject {
             await startStream(device, provider: provider)
         }
 
+        applyAudioPolicy()
         isConnecting = false
     }
 
     public func stopAllStreams() async {
-        guard let provider else { return }
-        for (id, info) in streams {
+        isMuted = true
+        activeDeviceId = nil
+
+        guard let provider else {
+            streams.removeAll()
+            return
+        }
+
+        for (deviceId, info) in streams {
             if info.session != nil {
-                await provider.stopLiveSession(deviceId: id)
+                await provider.stopLiveSession(deviceId: deviceId)
             }
         }
         streams.removeAll()
+    }
+
+    public func setMuted(_ muted: Bool) {
+        isMuted = muted
+        applyAudioPolicy()
+    }
+
+    public func setActiveDevice(_ deviceId: String?) {
+        activeDeviceId = deviceId
+        applyAudioPolicy()
     }
 
     public func session(for deviceId: String) -> RtspPlayerSession? {
@@ -75,11 +95,41 @@ public final class TapoStreamManager: ObservableObject {
             info.session = session
             info.state = .connected
             streams[device.id] = info
+            applyAudioPolicy()
         } catch {
             var info = streams[device.id] ?? StreamInfo(id: device.id, deviceName: device.name)
             info.state = .error(error.localizedDescription)
             info.error = error.localizedDescription
             streams[device.id] = info
+        }
+    }
+
+    nonisolated static func resolvedMutedStates(
+        deviceIds: [String],
+        isMuted: Bool,
+        activeDeviceId: String?
+    ) -> [String: Bool] {
+        if isMuted {
+            return Dictionary(uniqueKeysWithValues: deviceIds.map { ($0, true) })
+        }
+
+        guard let activeDeviceId else {
+            return Dictionary(uniqueKeysWithValues: deviceIds.map { ($0, true) })
+        }
+
+        return Dictionary(uniqueKeysWithValues: deviceIds.map { ($0, $0 != activeDeviceId) })
+    }
+
+    private func applyAudioPolicy() {
+        let mutedByDeviceId = Self.resolvedMutedStates(
+            deviceIds: Array(streams.keys),
+            isMuted: isMuted,
+            activeDeviceId: activeDeviceId
+        )
+
+        for (deviceId, info) in streams {
+            guard let session = info.session, let muted = mutedByDeviceId[deviceId] else { continue }
+            session.setMuted(muted)
         }
     }
 }

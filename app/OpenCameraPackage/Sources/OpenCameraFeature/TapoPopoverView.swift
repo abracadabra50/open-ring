@@ -7,6 +7,7 @@ public struct TapoPopoverView: View {
     @EnvironmentObject private var cameraController: AppCameraController
     @StateObject private var streamManager = TapoStreamManager()
     @State private var isDrawerExpanded = true
+    @State private var isMuted = true
 
     public init() {}
 
@@ -31,10 +32,15 @@ public struct TapoPopoverView: View {
         .task {
             streamManager.configure(provider: cameraController.provider)
             await streamManager.startAllStreams(for: cameraController.devices)
+            streamManager.setActiveDevice(cameraController.selectedDevice?.id ?? cameraController.devices.first?.id)
+            isMuted = true
+            streamManager.setMuted(true)
             cameraController.setLiveActive(true)
         }
         .onDisappear {
             cameraController.setLiveActive(false)
+            isMuted = true
+            streamManager.setMuted(true)
             Task {
                 await streamManager.stopAllStreams()
             }
@@ -43,10 +49,13 @@ public struct TapoPopoverView: View {
             Task {
                 await streamManager.stopAllStreams()
                 await streamManager.startAllStreams(for: newDevices)
+                streamManager.setActiveDevice(cameraController.selectedDevice?.id ?? newDevices.first?.id)
+                streamManager.setMuted(isMuted)
             }
         }
-        .onChange(of: cameraController.selectedDevice?.id) { _, _ in
-            cameraController.setLiveActive(cameraController.selectedDevice != nil)
+        .onChange(of: cameraController.selectedDevice?.id) { _, newDeviceId in
+            cameraController.setLiveActive(newDeviceId != nil)
+            streamManager.setActiveDevice(newDeviceId)
         }
     }
 
@@ -294,6 +303,17 @@ public struct TapoPopoverView: View {
                 cameraController.toggleSnooze()
             } label: {
                 Label(cameraController.isSnoozed ? "Unsnooze" : "Snooze", systemImage: "moon.fill")
+            }
+            .buttonStyle(.borderless)
+
+            Button {
+                isMuted.toggle()
+                streamManager.setMuted(isMuted)
+            } label: {
+                Label(
+                    isMuted ? "Unmute" : "Mute",
+                    systemImage: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill"
+                )
             }
             .buttonStyle(.borderless)
 

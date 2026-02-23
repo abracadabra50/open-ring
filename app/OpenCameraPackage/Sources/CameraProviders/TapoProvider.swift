@@ -39,9 +39,11 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
     private var password: String?
 
     private var activeSessions: [String: RtspPlayerSession] = [:]
+    private var tapoHttpMonitor: TapoHttpEventMonitor?
     private var onvifMonitor: OnvifEventMonitor?
     private var fallbackMonitor: SnapshotDiffEventMonitor?
     private var fallbackEnabled = false
+    private var onvifFallbackEnabled = false
 
     private let keychain = KeychainManager.shared
     private let storage = StorageManager.shared
@@ -243,10 +245,13 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
 
             await stopEventMonitoring()
             fallbackEnabled = false
+            onvifFallbackEnabled = false
 
-            let monitor = OnvifEventMonitor(config: config, password: password)
-            onvifMonitor = monitor
-            monitor.start(
+            NSLog("📡 Starting Tapo HTTP event monitoring for \(config.host)")
+
+            let httpMonitor = TapoHttpEventMonitor(config: config, password: password)
+            tapoHttpMonitor = httpMonitor
+            httpMonitor.start(
                 onEvent: { [weak self] event in
                     self?.state = .connected
                     self?.persist(event)
@@ -255,37 +260,81 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
                 },
                 onFailureThreshold: { [weak self] _ in
                     guard let self else { return }
-                    self.state = .offline
-                    onStatusChange(.offline)
-                    self.enableFallbackIfNeeded(
+                    NSLog("📡 Tapo HTTP failure threshold reached, falling back to ONVIF")
+                    self.enableOnvifFallback(
                         config: config,
                         password: password,
-                        onEvent: onEvent
+                        onEvent: onEvent,
+                        onStatusChange: onStatusChange
                     )
                 }
             )
         } catch {
+            NSLog("📡 Event monitoring failed to start: \(error.localizedDescription)")
             onStatusChange(.error(error.localizedDescription))
         }
     }
 
     public func stopEventMonitoring() async {
+        tapoHttpMonitor?.stop()
         onvifMonitor?.stop()
         fallbackMonitor?.stop()
+        tapoHttpMonitor = nil
         onvifMonitor = nil
         fallbackMonitor = nil
         fallbackEnabled = false
+        onvifFallbackEnabled = false
     }
 
-    private func enableFallbackIfNeeded(
+    /// Secondary fallback: ONVIF PullPoint event monitoring
+    private func enableOnvifFallback(
+        config: TapoSetupConfig,
+        password: String,
+        onEvent: @escaping @Sendable (CameraEvent) -> Void,
+        onStatusChange: @escaping @Sendable (CameraConnectionState) -> Void
+    ) {
+        guard !onvifFallbackEnabled else {
+            NSLog("📡 ONVIF fallback already enabled")
+            return
+        }
+        onvifFallbackEnabled = true
+        NSLog("📡 Enabling ONVIF fallback monitor for \(config.host):\(config.onvifPort)")
+
+        let monitor = OnvifEventMonitor(config: config, password: password)
+        onvifMonitor = monitor
+        monitor.start(
+            onEvent: { [weak self] event in
+                self?.state = .connected
+                self?.persist(event)
+                onEvent(event)
+                onStatusChange(.connected)
+            },
+            onFailureThreshold: { [weak self] _ in
+                guard let self else { return }
+                NSLog("📡 ONVIF fallback also failed, switching to snapshot-diff")
+                self.state = .offline
+                onStatusChange(.offline)
+                self.enableSnapshotDiffFallback(
+                    config: config,
+                    password: password,
+                    onEvent: onEvent
+                )
+            }
+        )
+    }
+
+    /// Tertiary fallback: Snapshot luminance diff monitoring
+    private func enableSnapshotDiffFallback(
         config: TapoSetupConfig,
         password: String,
         onEvent: @escaping @Sendable (CameraEvent) -> Void
     ) {
         guard !fallbackEnabled else {
+            NSLog("📸 Snapshot-diff fallback already enabled")
             return
         }
         fallbackEnabled = true
+        NSLog("📸 Enabling snapshot-diff fallback monitor for \(config.host)")
         let fallback = SnapshotDiffEventMonitor(config: config, password: password)
         fallbackMonitor = fallback
         fallback.start { [weak self] event in

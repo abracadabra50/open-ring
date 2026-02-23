@@ -31,21 +31,32 @@ Non-secret configuration is stored locally in app settings, while credentials ar
 
 Enable these on the Tapo C220:
 
+- **Camera Account** (Tapo App → Advanced Settings → Camera Account) — required for HTTP API and RTSP authentication
 - RTSP stream access
-- ONVIF service
+- ONVIF service (used as fallback only)
 - Local-network connectivity from the Mac running OpenCamera
 
 ## Event Pipeline
 
-1. ONVIF PullPoint monitor attempts to ingest camera events.
-2. Raw events are normalized to:
-   - `motion`
-   - `person`
-3. If ONVIF repeatedly fails, a snapshot-diff fallback monitor is auto-enabled.
-4. Normalized events are:
-   - persisted to local storage,
-   - displayed in timeline UI,
-   - eligible for notifications.
+Three-tier event detection with automatic failover:
+
+1. **Primary — Tapo HTTP API** (`TapoHttpEventMonitor`)
+   - Authenticates with the camera's proprietary HTTPS API (port 443) using stok tokens
+   - Polls `searchDetectionList` every 5 seconds for motion/person events
+   - Same mechanism used by the Tapo mobile app and the pytapo library
+2. **Secondary fallback — ONVIF PullPoint** (`OnvifEventMonitor`)
+   - Activated if the HTTP API fails 5 consecutive times
+   - Creates a PullPoint subscription and polls for events
+   - Note: Tapo ONVIF event support is unreliable across firmware versions
+3. **Tertiary fallback — Snapshot diff** (`SnapshotDiffEventMonitor`)
+   - Activated if ONVIF also fails 3 consecutive times
+   - Compares snapshot luminance to detect motion
+
+Detected events are normalized to `motion` or `person`, then:
+
+- Persisted to local storage
+- Displayed in the timeline UI
+- Eligible for macOS notifications
 
 ## Notification Behavior
 
