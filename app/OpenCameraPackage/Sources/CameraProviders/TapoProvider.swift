@@ -45,6 +45,7 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
     private var fallbackMonitor: SnapshotDiffEventMonitor?
     private var fallbackEnabled = false
     private var onvifFallbackEnabled = false
+    private var commandService: TapoCommandService?
 
     private let keychain = KeychainManager.shared
     private let storage = StorageManager.shared
@@ -365,6 +366,38 @@ public final class TapoProvider: CameraProvider, @unchecked Sendable {
         } catch {
             NSLog("❌ Failed to persist event: \(error)")
         }
+    }
+
+    // MARK: - Camera Controls (Privacy Mode + PTZ)
+
+    /// Sets the camera's privacy mode (lens mask) on or off.
+    public func setPrivacyMode(enabled: Bool) async throws {
+        let service = try await ensureCommandService()
+        try await service.setPrivacyMode(enabled: enabled)
+    }
+
+    /// Queries the current privacy mode (lens mask) state from the camera.
+    public func getPrivacyMode() async throws -> Bool {
+        let service = try await ensureCommandService()
+        return try await service.getPrivacyMode()
+    }
+
+    /// Moves the camera one step in the given direction.
+    public func movePTZ(direction: PTZDirection) async throws {
+        let service = try await ensureCommandService()
+        try await service.moveMotorStep(direction: direction)
+    }
+
+    /// Lazily creates (or returns) the command service, using the cloud password for HTTP API auth.
+    private func ensureCommandService() async throws -> TapoCommandService {
+        if let commandService {
+            return commandService
+        }
+        let (config, password) = try await ensureCredentials()
+        let httpPassword = try await keychain.getTapoCloudPassword() ?? password
+        let service = TapoCommandService(config: config, password: httpPassword)
+        commandService = service
+        return service
     }
 
     private func requireConfig() async throws -> TapoSetupConfig {

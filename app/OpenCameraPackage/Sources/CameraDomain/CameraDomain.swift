@@ -162,6 +162,15 @@ public protocol CameraProvider: AnyObject, Sendable {
     func stopEventMonitoring() async
 }
 
+/// Pan/tilt direction for PTZ-capable cameras.
+/// Raw values represent the angle passed to the Tapo `movestep` command.
+public enum PTZDirection: Int, Sendable {
+    case right = 0
+    case up = 90
+    case left = 180
+    case down = 270
+}
+
 public enum CameraProviderError: LocalizedError, Sendable {
     case notConfigured
     case authenticationFailed

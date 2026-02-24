@@ -161,6 +161,22 @@ public struct TapoPopoverView: View {
                     .foregroundStyle(.white.opacity(0.6))
             }
         }
+        .overlay(alignment: .topCenter) {
+            if cameraController.isPrivacyModeOn {
+                HStack(spacing: 6) {
+                    Image(systemName: "eye.slash.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("Privacy Mode ON")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.red.opacity(0.7))
+                .clipShape(Capsule())
+                .padding(.top, Spacing.sm)
+            }
+        }
         .overlay(alignment: .bottomLeading) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -181,6 +197,15 @@ public struct TapoPopoverView: View {
                 }
                 .padding(.horizontal, Spacing.md)
                 .padding(.bottom, Spacing.sm)
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if let device = cameraController.selectedDevice,
+               streamManager.state(for: device.id) == .connected,
+               !cameraController.isPrivacyModeOn {
+                ptzDPad
+                    .padding(.trailing, Spacing.md)
+                    .padding(.bottom, Spacing.sm)
             }
         }
     }
@@ -317,6 +342,18 @@ public struct TapoPopoverView: View {
             }
             .buttonStyle(.borderless)
 
+            Button {
+                Task {
+                    await cameraController.togglePrivacyMode()
+                }
+            } label: {
+                Label(
+                    "Privacy",
+                    systemImage: cameraController.isPrivacyModeOn ? "eye.slash.fill" : "eye.fill"
+                )
+            }
+            .buttonStyle(.borderless)
+
             Spacer()
 
             Button {
@@ -331,6 +368,50 @@ public struct TapoPopoverView: View {
         .padding(.horizontal, Spacing.md)
         .frame(height: 34)
         .background(.black.opacity(0.8))
+    }
+
+    // MARK: - PTZ D-Pad
+
+    private var ptzDPad: some View {
+        let buttonSize: CGFloat = 28
+
+        return ZStack {
+            Circle()
+                .fill(Color.black.opacity(0.5))
+                .frame(width: 84, height: 84)
+
+            // Up
+            ptzButton(symbol: "chevron.up", direction: .up)
+                .offset(y: -buttonSize + 2)
+
+            // Down
+            ptzButton(symbol: "chevron.down", direction: .down)
+                .offset(y: buttonSize - 2)
+
+            // Left
+            ptzButton(symbol: "chevron.left", direction: .left)
+                .offset(x: -buttonSize + 2)
+
+            // Right
+            ptzButton(symbol: "chevron.right", direction: .right)
+                .offset(x: buttonSize - 2)
+        }
+    }
+
+    private func ptzButton(symbol: String, direction: PTZDirection) -> some View {
+        Button {
+            Task {
+                await cameraController.movePTZ(direction)
+            }
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(cameraController.isPTZMoving ? 0.4 : 0.9))
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(cameraController.isPTZMoving)
     }
 
     private func timeString(_ date: Date) -> String {

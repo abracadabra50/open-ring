@@ -50,6 +50,8 @@ public final class AppCameraController: ObservableObject {
     @Published public var motionAlertsEnabled: Bool
     @Published public var isSnoozed: Bool
     @Published public var setupSummary: CameraSetupSummary?
+    @Published public private(set) var isPrivacyModeOn: Bool = false
+    @Published public private(set) var isPTZMoving: Bool = false
 
     public let provider: any CameraProvider
     private let maxEvents = 100
@@ -180,6 +182,45 @@ public final class AppCameraController: ObservableObject {
         defaults.set(motionAlertsEnabled, forKey: "motion_alerts_enabled")
     }
 
+    // MARK: - Privacy Mode
+
+    /// Toggles the camera's privacy mode (lens mask).
+    public func togglePrivacyMode() async {
+        guard let tapo = provider as? TapoProvider else { return }
+        let newValue = !isPrivacyModeOn
+        do {
+            try await tapo.setPrivacyMode(enabled: newValue)
+            isPrivacyModeOn = newValue
+        } catch {
+            NSLog("❌ Privacy mode toggle failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Fetches the current privacy mode state from the camera.
+    public func fetchPrivacyMode() async {
+        guard let tapo = provider as? TapoProvider else { return }
+        do {
+            isPrivacyModeOn = try await tapo.getPrivacyMode()
+        } catch {
+            NSLog("❌ Failed to fetch privacy mode: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - PTZ Controls
+
+    /// Moves the camera one step in the given direction.
+    public func movePTZ(_ direction: PTZDirection) async {
+        guard let tapo = provider as? TapoProvider else { return }
+        guard !isPTZMoving else { return }
+        isPTZMoving = true
+        do {
+            try await tapo.movePTZ(direction: direction)
+        } catch {
+            NSLog("❌ PTZ move failed: \(error.localizedDescription)")
+        }
+        isPTZMoving = false
+    }
+
     public func refresh() async {
         do {
             devices = try await provider.fetchDevices()
@@ -203,6 +244,7 @@ public final class AppCameraController: ObservableObject {
 
         _ = await NotificationManager.shared.requestPermission()
         await refresh()
+        await fetchPrivacyMode()
         await startEventMonitoring()
     }
 
