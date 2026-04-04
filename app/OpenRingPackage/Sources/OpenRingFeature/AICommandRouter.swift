@@ -4,7 +4,7 @@ import RingClient
 // MARK: - AI Command Router
 // Routes natural language queries to the appropriate handler
 
-public enum AICommand {
+public enum AICommand: Sendable {
     /// Analyze the current live video frame
     case liveAnalysis(String)
     /// Query event history with Claude
