@@ -19,6 +19,7 @@ public class MultiStreamManager: ObservableObject {
     @Published public var streams: [Int: StreamInfo] = [:]
     @Published public var isConnecting = false
     @Published public var activeDeviceId: Int?  // Currently active device (audio plays from this one)
+    @Published public var videoSizes: [Int: CGSize] = [:]  // Real stream size per device (kept across restarts)
 
     private var devices: [RingDevice] = []
 

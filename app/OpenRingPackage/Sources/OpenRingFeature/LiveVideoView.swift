@@ -66,7 +66,6 @@ public struct LiveVideoView: View {
             if let track = videoTrack {
                 WebRTCVideoView(
                     videoTrack: track,
-                    isPortrait: device.deviceType == .doorbell,
                     captureHandler: captureHandler
                 )
             } else {
@@ -423,15 +422,20 @@ import AppKit
 
 struct WebRTCVideoView: NSViewRepresentable {
     let videoTrack: RTCVideoTrack
-    let isPortrait: Bool
+    var fill = false          // false: whole image visible, true: image covers the view (cropped)
+    var zoom: CGFloat = 1
+    var pan: CGSize = .zero   // points
     var captureHandler: FrameCaptureHandler?
+    var onVideoSize: ((CGSize) -> Void)?  // real stream size, once known
 
     func makeNSView(context: Context) -> MetalVideoView {
-        let videoView = MetalVideoView(isPortrait: isPortrait)
-        NSLog("📹 WebRTCVideoView: Adding coordinator to track, track.isEnabled=\(videoTrack.isEnabled), track.readyState=\(videoTrack.readyState.rawValue), isPortrait=\(isPortrait)")
+        let videoView = MetalVideoView()
+        videoView.setTransform(fill: fill, zoom: zoom, pan: pan)
+        NSLog("📹 WebRTCVideoView: Adding coordinator to track, track.isEnabled=\(videoTrack.isEnabled), track.readyState=\(videoTrack.readyState.rawValue)")
         videoTrack.isEnabled = true
         videoTrack.add(context.coordinator)
         context.coordinator.metalView = videoView
+        context.coordinator.onVideoSize = onVideoSize
 
         // Connect frame capture handler
         if let handler = captureHandler {
@@ -443,6 +447,8 @@ struct WebRTCVideoView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: MetalVideoView, context: Context) {
+        nsView.setTransform(fill: fill, zoom: zoom, pan: pan)
+        context.coordinator.onVideoSize = onVideoSize
         // Update capture handler reference if needed
         if let handler = captureHandler {
             handler.metalView = nsView
@@ -461,13 +467,13 @@ struct WebRTCVideoView: NSViewRepresentable {
     @MainActor
     class Coordinator: NSObject, RTCVideoRenderer {
         weak var metalView: MetalVideoView?
-        private var videoSize: CGSize = .zero
+        var onVideoSize: ((CGSize) -> Void)?
 
         nonisolated func setSize(_ size: CGSize) {
             NSLog("📹 Coordinator.setSize called: \(size)")
             Task { @MainActor in
-                self.videoSize = size
                 self.metalView?.videoSize = size
+                self.onVideoSize?(size)
             }
         }
 
@@ -482,6 +488,46 @@ struct WebRTCVideoView: NSViewRepresentable {
     }
 }
 
+/// Where the video image lands inside its view. Pure math, shared by the renderer (pixels)
+/// and the pan gesture (points).
+enum VideoGeometry {
+    /// Image size: fit shows the whole image, fill covers the container; zoom multiplies either
+    static func imageSize(content: CGSize, container: CGSize, fill: Bool, zoom: CGFloat) -> CGSize {
+        guard content.width > 0, content.height > 0 else { return container }
+        let sx = container.width / content.width, sy = container.height / content.height
+        let scale = (fill ? max(sx, sy) : min(sx, sy)) * zoom
+        return CGSize(width: content.width * scale, height: content.height * scale)
+    }
+
+    /// Furthest the image can be dragged from center before its edge would enter the view
+    static func maxPan(content: CGSize, container: CGSize, fill: Bool, zoom: CGFloat) -> CGSize {
+        let size = imageSize(content: content, container: container, fill: fill, zoom: zoom)
+        return CGSize(
+            width: max(0, (size.width - container.width) / 2),
+            height: max(0, (size.height - container.height) / 2)
+        )
+    }
+
+    static func clamp(_ pan: CGSize, to limit: CGSize) -> CGSize {
+        CGSize(
+            width: min(limit.width, max(-limit.width, pan.width)),
+            height: min(limit.height, max(-limit.height, pan.height))
+        )
+    }
+
+    /// Image rect in container coordinates: centered, then moved by the (clamped) pan
+    static func imageRect(content: CGSize, container: CGSize, fill: Bool, zoom: CGFloat, pan: CGSize) -> CGRect {
+        let size = imageSize(content: content, container: container, fill: fill, zoom: zoom)
+        let offset = clamp(pan, to: maxPan(content: content, container: container, fill: fill, zoom: zoom))
+        return CGRect(
+            x: (container.width - size.width) / 2 + offset.width,
+            y: (container.height - size.height) / 2 + offset.height,
+            width: size.width,
+            height: size.height
+        )
+    }
+}
+
 // Custom Metal-based video view for rendering WebRTC frames with NV12 YUV support
 class MetalVideoView: NSView {
     private var metalLayer: CAMetalLayer?
@@ -490,7 +536,6 @@ class MetalVideoView: NSView {
     private var nv12PipelineState: MTLRenderPipelineState?
     private var bgraPipelineState: MTLRenderPipelineState?
     private var textureCache: CVMetalTextureCache?
-    private let isPortrait: Bool
 
     var videoSize: CGSize = .zero {
         didSet {
@@ -500,6 +545,27 @@ class MetalVideoView: NSView {
 
     private var currentFrame: RTCVideoFrame?
     private var frameCount = 0
+
+    // Fit/fill, zoom and pan are applied through the viewport, so the stream is always
+    // sampled at full resolution (no blurry upscaling of an already-rendered layer)
+    private var fill = false
+    private var zoom: CGFloat = 1
+    private var pan: CGSize = .zero
+
+    func setTransform(fill: Bool, zoom: CGFloat, pan: CGSize) {
+        guard fill != self.fill || zoom != self.zoom || pan != self.pan else { return }
+        self.fill = fill
+        self.zoom = zoom
+        self.pan = pan
+        redraw()
+    }
+
+    /// Re-render the last frame right away instead of waiting for the next one
+    private func redraw() {
+        if let frame = currentFrame {
+            draw(frame)
+        }
+    }
 
     // MARK: - Frame Capture
 
@@ -515,7 +581,7 @@ class MetalVideoView: NSView {
         let pixelFormat = CVPixelBufferGetPixelFormatType(pixelBuffer)
 
         // Convert to CIImage
-        var ciImage: CIImage
+        let ciImage: CIImage
 
         switch pixelFormat {
         case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange,
@@ -530,17 +596,6 @@ class MetalVideoView: NSView {
         default:
             NSLog("📸 Frame capture failed: unknown pixel format \(pixelFormat)")
             return nil
-        }
-
-        // Apply portrait crop if needed (same as shader)
-        if isPortrait {
-            let fullWidth = ciImage.extent.width
-            let fullHeight = ciImage.extent.height
-            // Crop to 9:16 from center (matching shader coordinates)
-            let cropWidth = fullWidth * 0.5625 // 0.78125 - 0.21875 = 0.5625
-            let cropX = fullWidth * 0.21875
-            let cropRect = CGRect(x: cropX, y: 0, width: cropWidth, height: fullHeight)
-            ciImage = ciImage.cropped(to: cropRect)
         }
 
         // Convert to JPEG
@@ -560,20 +615,12 @@ class MetalVideoView: NSView {
         return jpegData
     }
 
-    init(isPortrait: Bool = false) {
-        self.isPortrait = isPortrait
-        super.init(frame: .zero)
-        setupMetal()
-    }
-
     override init(frame frameRect: NSRect) {
-        self.isPortrait = false
         super.init(frame: frameRect)
         setupMetal()
     }
 
     required init?(coder: NSCoder) {
-        self.isPortrait = false
         super.init(coder: coder)
         setupMetal()
     }
@@ -610,14 +657,7 @@ class MetalVideoView: NSView {
         guard let device = device else { return }
 
         // NV12 YUV to RGB shader - samples both Y and UV planes
-        // For portrait mode (doorbells), we crop the 1440x1440 square to 9:16 aspect
-        // by sampling only the center portion horizontally
-
-        // Calculate texture coordinates for cropping
-        // Portrait 9:16 from 1:1 means X goes from 0.21875 to 0.78125
-        let xMin: Float = isPortrait ? 0.21875 : 0.0
-        let xMax: Float = isPortrait ? 0.78125 : 1.0
-
+        // Full frame is always sampled; aspect-fit is done with the viewport in renderFrame
         let nv12ShaderSource = """
         #include <metal_stdlib>
         using namespace metal;
@@ -634,13 +674,12 @@ class MetalVideoView: NSView {
                 float2(-1,  1),
                 float2( 1,  1)
             };
-            // Texture coordinates - crop horizontally for portrait mode
-            // X: \(xMin) to \(xMax), Y: 0 to 1 (flipped)
+            // Full-frame texture coordinates (Y flipped)
             float2 texCoords[4] = {
-                float2(\(xMin), 1),
-                float2(\(xMax), 1),
-                float2(\(xMin), 0),
-                float2(\(xMax), 0)
+                float2(0, 1),
+                float2(1, 1),
+                float2(0, 0),
+                float2(1, 0)
             };
 
             VertexOut out;
@@ -673,7 +712,7 @@ class MetalVideoView: NSView {
         }
         """
 
-        // BGRA passthrough shader (with same cropping for portrait mode)
+        // BGRA passthrough shader
         let bgraShaderSource = """
         #include <metal_stdlib>
         using namespace metal;
@@ -690,12 +729,12 @@ class MetalVideoView: NSView {
                 float2(-1,  1),
                 float2( 1,  1)
             };
-            // Texture coordinates - crop horizontally for portrait mode
+            // Full-frame texture coordinates (Y flipped)
             float2 texCoords[4] = {
-                float2(\(xMin), 1),
-                float2(\(xMax), 1),
-                float2(\(xMin), 0),
-                float2(\(xMax), 0)
+                float2(0, 1),
+                float2(1, 1),
+                float2(0, 0),
+                float2(1, 0)
             };
 
             VertexOut out;
@@ -749,6 +788,10 @@ class MetalVideoView: NSView {
             NSLog("📹 Rendering frame #\(frameCount), size: \(frame.width)x\(frame.height)")
         }
 
+        draw(frame)
+    }
+
+    private func draw(_ frame: RTCVideoFrame) {
         guard let metalLayer = metalLayer else { return }
         guard let drawable = metalLayer.nextDrawable() else { return }
         guard let commandQueue = commandQueue else { return }
@@ -804,6 +847,18 @@ class MetalVideoView: NSView {
             return
         }
 
+        // Never stretch: the viewport keeps the stream's aspect ratio (may extend past the drawable)
+        let pixelsPerPoint = metalLayer.contentsScale
+        let rect = VideoGeometry.imageRect(
+            content: CGSize(width: Int(frame.width), height: Int(frame.height)),
+            container: CGSize(width: drawable.texture.width, height: drawable.texture.height),
+            fill: fill,
+            zoom: zoom,
+            pan: CGSize(width: pan.width * pixelsPerPoint, height: pan.height * pixelsPerPoint)
+        )
+        encoder.setViewport(MTLViewport(
+            originX: rect.minX, originY: rect.minY, width: rect.width, height: rect.height, znear: 0, zfar: 1
+        ))
         encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         encoder.endEncoding()
 
@@ -875,6 +930,7 @@ class MetalVideoView: NSView {
             width: bounds.width * (NSScreen.main?.backingScaleFactor ?? 2.0),
             height: bounds.height * (NSScreen.main?.backingScaleFactor ?? 2.0)
         )
+        redraw()
     }
 }
 #endif

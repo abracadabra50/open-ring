@@ -25,6 +25,9 @@ public struct MultiStreamVideoView: View {
     @State private var isSirenActive = false
     @State private var isControlLoading = false  // Show loading during API calls
 
+    // Fit (whole image) or fill (cover the view, drag to look around) - shared by popover and pinned window
+    @AppStorage("videoFill") private var isFill = false
+
     // Zoom state
     @State private var zoomScale: CGFloat = 1.0
     @State private var zoomOffset: CGSize = .zero
@@ -51,6 +54,14 @@ public struct MultiStreamVideoView: View {
         streamManager.getVideoTrack(for: device.id)
     }
 
+    // Real stream size (zero until the first frame)
+    private var streamSize: CGSize {
+        streamManager.videoSizes[device.id] ?? .zero
+    }
+
+    // Dragging pans the image whenever it can overflow the view
+    private var canPan: Bool { isFill || zoomScale > 1.0 }
+
     // Get current connection state
     private var connectionState: LiveViewSession.State {
         streamManager.getState(for: device.id)
@@ -66,33 +77,40 @@ public struct MultiStreamVideoView: View {
             // Video background
             Color.black
 
-            // Video content or placeholder with zoom applied
+            // Video content or placeholder (fit/fill, zoom and pan are applied by the renderer)
             // Use combined id to force recreation when track becomes available
             if let track = videoTrack {
-                WebRTCVideoView(
-                    videoTrack: track,
-                    isPortrait: device.deviceType == .doorbell,
-                    captureHandler: captureHandler
-                )
-                .scaleEffect(zoomScale)
-                .offset(zoomOffset)
-                .id("\(device.id)_hasVideo")
-                .gesture(zoomPanGesture)
-                #if os(macOS)
-                .onScrollWheel { delta in
-                    // Vertical scroll = zoom
-                    if abs(delta.y) > 0.5 {
-                        withAnimation(.easeOut(duration: 0.1)) {
-                            let zoomDelta = delta.y > 0 ? 0.1 : -0.1
-                            zoomScale = min(maxZoom, max(minZoom, zoomScale + zoomDelta))
-                            if zoomScale <= 1.0 {
-                                zoomOffset = .zero
-                                lastDragOffset = .zero
+                GeometryReader { geo in
+                    WebRTCVideoView(
+                        videoTrack: track,
+                        fill: isFill,
+                        zoom: zoomScale,
+                        pan: zoomOffset,
+                        captureHandler: captureHandler,
+                        onVideoSize: { [streamManager, id = device.id] size in
+                            if streamManager.videoSizes[id] != size {
+                                streamManager.videoSizes[id] = size
+                            }
+                        }
+                    )
+                    .id("\(device.id)_hasVideo")
+                    .gesture(canPan ? panGesture(in: geo.size) : nil)
+                    #if os(macOS)
+                    .onScrollWheel { delta in
+                        // Vertical scroll = zoom
+                        if abs(delta.y) > 0.5 {
+                            withAnimation(.easeOut(duration: 0.1)) {
+                                let zoomDelta = delta.y > 0 ? 0.1 : -0.1
+                                zoomScale = min(maxZoom, max(minZoom, zoomScale + zoomDelta))
+                                if zoomScale <= 1.0 {
+                                    zoomOffset = .zero
+                                    lastDragOffset = .zero
+                                }
                             }
                         }
                     }
+                    #endif
                 }
-                #endif
             } else {
                 connectionPlaceholder
                     .id("\(device.id)_noVideo")
@@ -137,9 +155,9 @@ public struct MultiStreamVideoView: View {
         .onHover { hovering in
             isHovering = hovering
         }
-        // Only use swipe gesture when not zoomed (zoom has its own pan gesture)
+        // Only use swipe gesture when dragging doesn't pan the image
         .gesture(
-            zoomScale == 1.0 ?
+            !canPan ?
             DragGesture(minimumDistance: 50)
                 .onChanged { value in
                     dragOffset = value.translation.width
@@ -179,6 +197,7 @@ public struct MultiStreamVideoView: View {
             withAnimation(.easeOut(duration: 0.2)) {
                 zoomScale = 1.0
                 zoomOffset = .zero
+                lastDragOffset = .zero
             }
             // Switch audio to the new device
             streamManager.setActiveDevice(newId)
@@ -357,19 +376,30 @@ public struct MultiStreamVideoView: View {
         }
     }
 
-    // Pan gesture for when zoomed in
-    private var zoomPanGesture: some Gesture {
+    // Drag to look around when the image overflows the view (fill mode or zoomed in).
+    // Clamped so the image edge never enters the view.
+    private func panGesture(in container: CGSize) -> some Gesture {
         DragGesture()
             .onChanged { value in
-                guard zoomScale > 1.0 else { return }
-                zoomOffset = CGSize(
-                    width: lastDragOffset.width + value.translation.width,
-                    height: lastDragOffset.height + value.translation.height
+                let limit = VideoGeometry.maxPan(content: streamSize, container: container, fill: isFill, zoom: zoomScale)
+                let start = VideoGeometry.clamp(lastDragOffset, to: limit)  // limit may have shrunk since last drag
+                zoomOffset = VideoGeometry.clamp(
+                    CGSize(
+                        width: start.width + value.translation.width,
+                        height: start.height + value.translation.height
+                    ),
+                    to: limit
                 )
             }
             .onEnded { _ in
                 lastDragOffset = zoomOffset
             }
+    }
+
+    private func toggleFill() {
+        isFill.toggle()
+        zoomOffset = .zero
+        lastDragOffset = .zero
     }
 
     // MARK: - Push-to-Talk Button
@@ -562,6 +592,20 @@ public struct MultiStreamVideoView: View {
 
             // Device control buttons
             deviceControlButtons
+
+            // Fit / fill toggle
+            Button {
+                toggleFill()
+            } label: {
+                Image(systemName: isFill ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 28, height: 28)
+                    .background(.black.opacity(0.5))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .help(isFill ? "Fit: show the whole image" : "Fill the view (drag to look around)")
 
             // Close button
             Button {
