@@ -1,144 +1,40 @@
 import SwiftUI
 import DesignSystem
+import RingClient
 import AppKit
 
-// MARK: - Floating Video Window
+// MARK: - Pinned Video View
 
-public struct FloatingVideoView: View {
-    let deviceName: String
+/// Live view shown in the pinned window; keeps its own camera selection
+struct PinnedVideoView: View {
+    @State var device: RingDevice
+    let devices: [RingDevice]
+    @ObservedObject var streamManager: MultiStreamManager
     let onClose: () -> Void
+    let onDeviceChange: (RingDevice) -> Void
 
-    @State private var isHovering = false
-    @State private var remainingTime: TimeInterval = 120 // 2 minutes
-    @State private var isMuted = true
-
-    public init(deviceName: String, onClose: @escaping () -> Void) {
-        self.deviceName = deviceName
-        self.onClose = onClose
-    }
-
-    public var body: some View {
-        ZStack {
-            // Video content (placeholder)
-            LinearGradient(
-                colors: [Color.black, Color.black.opacity(0.9)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
-            // Center play indicator when not live
-            Image(systemName: "play.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.white.opacity(0.3))
-
-            // Overlay controls
-            VStack {
-                // Top bar (always visible with live badge)
-                topBar
-
-                Spacer()
-
-                // Bottom controls (on hover)
-                if isHovering {
-                    bottomControls
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
-                }
+    var body: some View {
+        MultiStreamVideoView(
+            device: device,
+            devices: devices,
+            streamManager: streamManager,
+            onClose: onClose,
+            onSwitchDevice: { newDevice in
+                device = newDevice
+                onDeviceChange(newDevice)
             }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: Layout.FloatingWindow.cornerRadius))
-        .shadow(
-            color: .black.opacity(Layout.FloatingWindow.shadowOpacity),
-            radius: Layout.FloatingWindow.shadowRadius,
-            x: Layout.FloatingWindow.shadowOffset.width,
-            y: Layout.FloatingWindow.shadowOffset.height
         )
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: RingAnimation.defaultDuration)) {
-                isHovering = hovering
-            }
-        }
-    }
-
-    // MARK: - Top Bar
-
-    private var topBar: some View {
-        HStack {
-            LiveBadge()
-
-            Spacer()
-
-            // Timer
-            Text(timeString)
-                .font(.Ring.mono)
-                .foregroundStyle(.white)
-                .padding(.horizontal, Spacing.sm)
-                .padding(.vertical, Spacing.xs)
-                .background(.black.opacity(0.5))
-                .clipShape(Capsule())
-        }
-        .padding(Spacing.md)
-    }
-
-    // MARK: - Bottom Controls
-
-    private var bottomControls: some View {
-        HStack {
-            // Device name
-            Text(deviceName)
-                .font(.Ring.headline)
-                .foregroundStyle(.white)
-
-            Spacer()
-
-            // Control buttons
-            HStack(spacing: Spacing.sm) {
-                // Mute toggle
-                Button {
-                    isMuted.toggle()
-                } label: {
-                    Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.white)
-                        .frame(width: 28, height: 28)
-                        .background(.white.opacity(0.2))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-                .buttonStyle(.plain)
-
-                // Close button
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.white)
-                        .frame(width: 28, height: 28)
-                        .background(.white.opacity(0.2))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(Spacing.md)
-        .background(
-            LinearGradient(
-                colors: [.clear, .black.opacity(0.6)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-    }
-
-    private var timeString: String {
-        let minutes = Int(remainingTime) / 60
-        let seconds = Int(remainingTime) % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 }
 
 // MARK: - Floating Window Controller
 
+/// Always-on-top window for a pinned camera. Shares the popover's streams, so pinning is instant
+/// and the video keeps playing after the popover closes.
 @MainActor
-public final class FloatingWindowController: NSObject {
+public final class FloatingWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
+    private var streamManager: MultiStreamManager?
 
     public static let shared = FloatingWindowController()
 
@@ -146,50 +42,49 @@ public final class FloatingWindowController: NSObject {
         super.init()
     }
 
-    public func show(deviceName: String) {
-        if window != nil {
-            close()
-        }
+    public func show(device: RingDevice, devices: [RingDevice], streamManager: MultiStreamManager) {
+        close()
 
-        let contentView = FloatingVideoView(deviceName: deviceName) { [weak self] in
-            self?.close()
-        }
+        // Register as a viewer before the popover goes away, so the streams never drop
+        streamManager.attach(for: devices)
+        self.streamManager = streamManager
 
-        let hostingView = NSHostingView(rootView: contentView)
+        let size = Layout.Video.box(for: streamManager.videoSizes[device.id] ?? .zero)
 
+        // Standard titled window: native drag, resize and close
         let window = NSWindow(
-            contentRect: NSRect(
-                x: 0,
-                y: 0,
-                width: Layout.FloatingWindow.defaultWidth,
-                height: Layout.FloatingWindow.defaultHeight
-            ),
-            styleMask: [.borderless, .resizable],
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
 
-        window.contentView = hostingView
-        window.isOpaque = false
-        window.backgroundColor = .clear
+        window.contentView = NSHostingView(rootView: PinnedVideoView(
+            device: device,
+            devices: devices,
+            streamManager: streamManager,
+            onClose: { [weak self] in self?.close() },
+            onDeviceChange: { [weak window] in window?.title = $0.name }
+        ))
+        window.title = device.name
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.backgroundColor = .black
         window.level = .floating
-        window.isMovableByWindowBackground = true
-        window.hasShadow = false // We draw our own shadow
-
-        // Set minimum size
-        window.minSize = NSSize(
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.isReleasedWhenClosed = false
+        window.contentMinSize = NSSize(
             width: Layout.FloatingWindow.minWidth,
             height: Layout.FloatingWindow.minHeight
         )
+        window.delegate = self
 
         // Position in bottom-right corner
         if let screen = NSScreen.main {
             let screenFrame = screen.visibleFrame
-            let windowOrigin = NSPoint(
-                x: screenFrame.maxX - Layout.FloatingWindow.defaultWidth - 20,
+            window.setFrameOrigin(NSPoint(
+                x: screenFrame.maxX - window.frame.width - 20,
                 y: screenFrame.minY + 20
-            )
-            window.setFrameOrigin(windowOrigin)
+            ))
         }
 
         window.makeKeyAndOrderFront(nil)
@@ -198,22 +93,17 @@ public final class FloatingWindowController: NSObject {
 
     public func close() {
         window?.close()
+    }
+
+    // Also runs for the title bar close button
+    public func windowWillClose(_ notification: Notification) {
+        window?.contentView = nil
         window = nil
+        streamManager?.detach()
+        streamManager = nil
     }
 
     public var isVisible: Bool {
         window?.isVisible ?? false
     }
 }
-
-// MARK: - Preview
-
-#if DEBUG
-#Preview("Floating Video") {
-    FloatingVideoView(deviceName: "Front Door") {}
-        .frame(
-            width: Layout.FloatingWindow.defaultWidth,
-            height: Layout.FloatingWindow.defaultHeight
-        )
-}
-#endif

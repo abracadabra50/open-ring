@@ -13,8 +13,6 @@ public struct PopoverView: View {
     let onRefresh: () -> Void
 
     @State private var showLiveView = true  // Start with live view by default
-    @State private var hasAutoStarted = false
-    @State private var streamStartId = UUID()  // Force stream restart on popover reopen
     @State private var playbackError: String?
     @State private var playingVideoURL: URL?
     @State private var playingEvent: RingEvent?
@@ -122,7 +120,8 @@ public struct PopoverView: View {
                             },
                             onSwitchDevice: { newDevice in
                                 selectedDevice = newDevice
-                            }
+                            },
+                            onPin: { pin(device) }
                         )
                         .frame(height: videoBox.height)
 
@@ -172,18 +171,10 @@ public struct PopoverView: View {
         .onChange(of: isDrawerExpanded) { _, newValue in
             drawerExpandedPref = newValue
         }
-        .task(id: streamStartId) {
-            // Start all streams when popover opens (task restarts when streamStartId changes)
-            if !videoDevices.isEmpty {
-                NSLog("🚀 Starting streams for \(videoDevices.count) devices")
-                await streamManager.startAllStreams(for: videoDevices)
-            }
-        }
         .onAppear {
-            // Force stream restart when popover reopens
-            streamStartId = UUID()
+            // Start streams when popover opens (no-op if the pinned window already keeps them alive)
+            streamManager.attach(for: videoDevices)
             showLiveView = true
-            hasAutoStarted = true
 
             // Restore drawer state from preference
             isDrawerExpanded = drawerExpandedPref
@@ -200,12 +191,22 @@ public struct PopoverView: View {
             }
         }
         .onDisappear {
-            // Stop all streams when popover closes
-            Task {
-                NSLog("👋 Stopping all streams")
-                await streamManager.stopAllStreams()
-            }
+            // Streams stop when popover closes, unless the pinned window still watches them
+            streamManager.detach()
         }
+    }
+
+    // MARK: - Pin
+
+    /// Move the live view into an always-on-top window, then dismiss the popover
+    private func pin(_ device: RingDevice) {
+        let popoverWindow = NSApp.keyWindow
+        FloatingWindowController.shared.show(
+            device: device,
+            devices: videoDevices,
+            streamManager: streamManager
+        )
+        popoverWindow?.close()
     }
 
     // MARK: - Footer Bar with Settings, Branding, and Scale Controls

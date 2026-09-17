@@ -13,6 +13,7 @@ public struct MultiStreamVideoView: View {
     var captureHandler: FrameCaptureHandler?
     let onClose: () -> Void
     let onSwitchDevice: (RingDevice) -> Void
+    var onPin: (() -> Void)? = nil  // nil hides the pin button (e.g. already pinned)
 
     @State private var isMuted = false
     @State private var isTalking = false
@@ -606,6 +607,20 @@ public struct MultiStreamVideoView: View {
             }
             .buttonStyle(.plain)
             .help(isFill ? "Fit: show the whole image" : "Fill the view (drag to look around)")
+
+            // Pin button - detach into an always-on-top window
+            if let onPin {
+                Button(action: onPin) {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.white)
+                        .frame(width: 28, height: 28)
+                        .background(.black.opacity(0.5))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help("Pin on top")
+            }
 
             // Close button
             Button {
