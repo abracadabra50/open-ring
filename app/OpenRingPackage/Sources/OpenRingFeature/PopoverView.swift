@@ -13,8 +13,6 @@ public struct PopoverView: View {
     let onRefresh: () -> Void
 
     @State private var showLiveView = true  // Start with live view by default
-    @State private var hasAutoStarted = false
-    @State private var streamStartId = UUID()  // Force stream restart on popover reopen
     @State private var playbackError: String?
     @State private var playingVideoURL: URL?
     @State private var playingEvent: RingEvent?
@@ -34,6 +32,9 @@ public struct PopoverView: View {
 
     // Frame capture for live AI analysis
     @StateObject private var frameCaptureHandler = FrameCaptureHandler()
+
+    // Fit / fill mode (toggled from the video view)
+    @AppStorage("videoFill") private var videoFill = false
 
     // Window scale factor (persisted)
     @AppStorage("windowScale") private var windowScale: Double = 1.0
@@ -66,27 +67,16 @@ public struct PopoverView: View {
         playingVideoURL != nil || isLoadingVideo ? 320 : 200
     }
 
-    // Calculate popover size - use max size (drawer expanded) since MenuBarExtra can't resize
-    private var popoverSize: CGSize {
+    // Fit: the video box follows the real stream aspect ratio, so nothing is cropped or letterboxed.
+    // Device type says nothing reliable about it (doorbells stream 16:9 or 1:1 depending on model).
+    // Fill: doorbells get a tall portrait box that the image covers (drag to look around).
+    private var videoBox: CGSize {
+        let device = selectedDevice
+        let box = videoFill && device?.deviceType == .doorbell
+            ? CGSize(width: 340, height: 500)
+            : Layout.Video.box(for: device.flatMap { streamManager.videoSizes[$0.id] } ?? .zero)
         let scale = CGFloat(windowScale)
-        if showLiveView, let device = selectedDevice {
-            // Always use expanded drawer height since window can't resize
-            let drawerHeight: CGFloat = drawerExpandedHeight
-
-            switch device.deviceType {
-            case .doorbell:
-                // Portrait doorbell: 340x500 video + drawer + footer
-                return CGSize(width: 340 * scale, height: (500 + drawerHeight + footerHeight) * scale)
-            case .camera:
-                // Landscape camera: 480x270 video + drawer + footer
-                return CGSize(width: 480 * scale, height: (270 + drawerHeight + footerHeight) * scale)
-            default:
-                return CGSize(width: 400 * scale, height: (300 + drawerHeight + footerHeight) * scale)
-            }
-        } else {
-            // Default menu view
-            return CGSize(width: 280 * scale, height: 500 * scale)
-        }
+        return CGSize(width: box.width * scale, height: box.height * scale)
     }
 
     // Scale functions
@@ -105,20 +95,6 @@ public struct PopoverView: View {
     private func resetScale() {
         withAnimation(.easeOut(duration: 0.2)) {
             windowScale = 1.0
-        }
-    }
-
-    // Video height (without AI panel, with scale applied)
-    private var videoHeight: CGFloat {
-        let scale = CGFloat(windowScale)
-        guard let device = selectedDevice else { return 400 * scale }
-        switch device.deviceType {
-        case .doorbell:
-            return 500 * scale
-        case .camera:
-            return 270 * scale
-        default:
-            return 300 * scale
         }
     }
 
@@ -144,9 +120,10 @@ public struct PopoverView: View {
                             },
                             onSwitchDevice: { newDevice in
                                 selectedDevice = newDevice
-                            }
+                            },
+                            onPin: { pin(device) }
                         )
-                        .frame(height: videoHeight)
+                        .frame(height: videoBox.height)
 
                         // Collapsible drawer with AI Panel (always shown, but AI requires API key)
                         DrawerPanel(
@@ -169,7 +146,7 @@ public struct PopoverView: View {
                         // Footer bar
                         footerBarView
                     }
-                    .frame(width: popoverSize.width)
+                    .frame(width: videoBox.width)
                 } else {
                     // Fallback - shouldn't happen in live-first design
                     // Show loading/connecting state
@@ -188,24 +165,16 @@ public struct PopoverView: View {
                 }
             }
         }
-        .frame(width: popoverSize.width)
+        .frame(width: videoBox.width)
         .animation(.easeInOut(duration: 0.2), value: showLiveView)
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isDrawerExpanded)
         .onChange(of: isDrawerExpanded) { _, newValue in
             drawerExpandedPref = newValue
         }
-        .task(id: streamStartId) {
-            // Start all streams when popover opens (task restarts when streamStartId changes)
-            if !videoDevices.isEmpty {
-                NSLog("🚀 Starting streams for \(videoDevices.count) devices")
-                await streamManager.startAllStreams(for: videoDevices)
-            }
-        }
         .onAppear {
-            // Force stream restart when popover reopens
-            streamStartId = UUID()
+            // Start streams when popover opens (no-op if the pinned window already keeps them alive)
+            streamManager.attach(for: videoDevices)
             showLiveView = true
-            hasAutoStarted = true
 
             // Restore drawer state from preference
             isDrawerExpanded = drawerExpandedPref
@@ -222,12 +191,22 @@ public struct PopoverView: View {
             }
         }
         .onDisappear {
-            // Stop all streams when popover closes
-            Task {
-                NSLog("👋 Stopping all streams")
-                await streamManager.stopAllStreams()
-            }
+            // Streams stop when popover closes, unless the pinned window still watches them
+            streamManager.detach()
         }
+    }
+
+    // MARK: - Pin
+
+    /// Move the live view into an always-on-top window, then dismiss the popover
+    private func pin(_ device: RingDevice) {
+        let popoverWindow = NSApp.keyWindow
+        FloatingWindowController.shared.show(
+            device: device,
+            devices: videoDevices,
+            streamManager: streamManager
+        )
+        popoverWindow?.close()
     }
 
     // MARK: - Footer Bar with Settings, Branding, and Scale Controls

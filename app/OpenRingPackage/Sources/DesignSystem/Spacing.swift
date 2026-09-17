@@ -38,6 +38,14 @@ public enum Layout {
         public static let aspectRatio: CGFloat = 16 / 9
         public static let cornerRadius: CGFloat = 8
         public static let margin: CGFloat = Spacing.md
+
+        /// Display box matching a stream's real aspect ratio (16:9 until its size is known):
+        /// 480 wide for landscape, 340 wide for portrait
+        public static func box(for stream: CGSize) -> CGSize {
+            let aspect = stream.width > 0 && stream.height > 0 ? stream.width / stream.height : aspectRatio
+            let width: CGFloat = aspect >= 1 ? 480 : 340
+            return CGSize(width: width, height: (width / aspect).rounded())
+        }
     }
 
     /// Floating window

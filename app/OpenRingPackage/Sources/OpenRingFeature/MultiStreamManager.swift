@@ -19,10 +19,29 @@ public class MultiStreamManager: ObservableObject {
     @Published public var streams: [Int: StreamInfo] = [:]
     @Published public var isConnecting = false
     @Published public var activeDeviceId: Int?  // Currently active device (audio plays from this one)
+    @Published public var videoSizes: [Int: CGSize] = [:]  // Real stream size per device (kept across restarts)
 
     private var devices: [RingDevice] = []
+    private var viewers = 0  // popover + pinned window share the same streams
 
     public init() {}
+
+    /// Register a viewer - streams start with the first one
+    public func attach(for devices: [RingDevice]) {
+        viewers += 1
+        if viewers == 1 {
+            NSLog("🚀 Starting streams for \(devices.count) devices")
+            Task { await startAllStreams(for: devices) }
+        }
+    }
+
+    /// Unregister a viewer - streams stop with the last one
+    public func detach() {
+        viewers = max(0, viewers - 1)
+        if viewers == 0 {
+            Task { await stopAllStreams() }
+        }
+    }
 
     /// Start streams for all provided devices
     public func startAllStreams(for devices: [RingDevice]) async {
@@ -118,14 +137,12 @@ public class MultiStreamManager: ObservableObject {
     /// Stop all streams
     public func stopAllStreams() async {
         NSLog("📹 MultiStreamManager: Stopping all streams")
-        for (deviceId, streamInfo) in streams {
-            if let session = streamInfo.session {
-                await session.stop()
-            }
-            streams[deviceId]?.videoTrack = nil
-            streams[deviceId]?.session = nil
-        }
+        // Clear first: a start racing with these awaits must not get its new streams wiped
+        let stopping = streams
         streams.removeAll()
+        for streamInfo in stopping.values {
+            await streamInfo.session?.stop()
+        }
     }
 
     /// Get video track for a specific device
