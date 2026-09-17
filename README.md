@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2014+-blue" alt="Platform">
-  <img src="https://img.shields.io/badge/swift-5.9+-orange" alt="Swift">
+  <img src="https://img.shields.io/badge/swift-6.1+-orange" alt="Swift">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
@@ -33,13 +33,26 @@ Ring's official app is phone-first. There's no native Mac app, just a web dashbo
 
 Stream video from any Ring device in real-time using WebRTC.
 
-- **Multi-camera support** — Switch between cameras with swipe gestures or keyboard shortcuts (⌘1-4)
-- **Portrait mode** — Doorbells display in their native vertical orientation
-- **Zoom controls** — Use +/- keys or scroll to zoom in/out (1x-3x)
+- **Multi-camera support** — All cameras connect at once, so switching is instant: swipe, arrow keys or ⌘1-4
+- **True aspect ratio** — The picture is never cropped or stretched. The view follows the real size of each stream (Ring doorbells send 16:9 or 1:1 depending on the model)
+- **Fit / Fill** — One button toggles between the whole image (*fit*) and an image that covers the view (*fill*). In fill mode doorbells get a tall portrait view. The choice is remembered
+- **Look around** — Whenever the image is larger than the view (fill mode or zoomed in), drag with the mouse to pan. Panning stops at the edges of the image
+- **Sharp zoom** — +/- keys, scroll wheel or the on-screen buttons (1x-4x). Zoom is applied in the Metal renderer, so you see the real detail of the stream instead of magnified pixels
+- **Pin on top** — Detach the live view into a floating window (see below)
 - **Connection status** — Visual indicators for ICE/signaling state
 - **Auto-reconnect** — Handles network interruptions gracefully
 
 The video pipeline uses Ring's WebRTC infrastructure with proper ICE candidate handling and codec negotiation (H.264).
+
+### Pinned Window
+
+The menu bar popover closes as soon as you click somewhere else. Click the **pin** button in the top bar of the video to keep an eye on a camera while you work:
+
+- **Always on top** — Floats above other apps and follows you across Spaces and full-screen apps
+- **Instant** — The window reuses the streams the popover already opened, no reconnection
+- **Full controls** — Camera switching, fit/fill, zoom, pan, mute, push-to-talk, floodlight and siren all work in the pinned window
+- **Native window** — Drag it by its title bar, resize it freely, close it with the red button or the hang-up button
+- **Battery friendly** — Streams stop as soon as the last view (popover or pinned window) is closed
 
 ### Push-to-Talk
 
@@ -107,8 +120,10 @@ Get alerted when something happens.
 | **⌘`** | Open OpenRing (global, works from any app) |
 | **⌘1-4** | Switch to camera 1/2/3/4 |
 | **+/-** | Zoom in/out |
+| **0** | Reset zoom |
+| **Scroll** | Zoom in/out |
+| **Drag** | Look around (fill mode or zoomed in), otherwise swipe to the previous/next camera |
 | **←/→** | Previous/next camera |
-| **Space** | Toggle push-to-talk |
 
 The global hotkey is customizable in Settings (⌘⇧R, ⌘⌥O, ⌃⌥Space, etc.).
 
@@ -142,15 +157,38 @@ git clone https://github.com/abracadabra50/open-ring.git
 cd open-ring/app
 
 # Open in Xcode
-open OpenRing.xcworkspace
+open OpenRing.xcodeproj
 
 # Build and run (⌘R)
 ```
 
 **Requirements:**
-- Xcode 15.0+
+- Xcode 16.3+ (the package uses Swift tools 6.1)
 - macOS 14.0+ (Sonoma)
-- Swift 5.9+
+
+#### Install your own build in /Applications
+
+```bash
+cd open-ring/app
+
+# Release build, signing handled in the next step
+xcodebuild -project OpenRing.xcodeproj -scheme OpenRing -configuration Release \
+  -derivedDataPath build/DerivedData build CODE_SIGNING_ALLOWED=NO
+
+# Sign with a stable identity (list yours with: security find-identity -v -p codesigning)
+codesign --force --deep --sign "Apple Development: you@example.com (TEAMID)" \
+  build/DerivedData/Build/Products/Release/OpenRing.app
+
+# Quit the running app, then replace it
+pkill -x OpenRing
+rm -rf /Applications/OpenRing.app
+cp -R build/DerivedData/Build/Products/Release/OpenRing.app /Applications/
+open /Applications/OpenRing.app
+```
+
+> **Why a stable identity?** Ring credentials live in the macOS Keychain, and the Keychain remembers *which app* may read them by its code signature. An ad-hoc signature (`--sign -`) changes with every build, so every rebuild looks like an unknown app and macOS asks for your password again. With a real identity, **Always Allow** sticks across rebuilds.
+
+A full build needs around 1 GB of free disk space (WebRTC is large). `build/` is git-ignored.
 
 ---
 
@@ -179,11 +217,16 @@ open-ring/
 │       │
 │       ├── Sources/
 │       │   ├── OpenRingFeature/     # Main UI and features
-│       │   │   ├── PopoverView.swift
-│       │   │   ├── MultiStreamVideoView.swift
+│       │   │   ├── PopoverView.swift            # Menu bar popover
+│       │   │   ├── MultiStreamVideoView.swift   # Live view + controls (fit/fill, zoom, pan, pin)
+│       │   │   ├── MultiStreamManager.swift     # One WebRTC session per camera, shared by all views
+│       │   │   ├── LiveVideoView.swift          # Metal renderer + video geometry
+│       │   │   ├── FloatingVideoWindow.swift    # Pinned always-on-top window
 │       │   │   ├── LoginView.swift
-│       │   │   ├── EventTimelineView.swift
-│       │   │   ├── AIOverlayPanel.swift
+│       │   │   ├── AIOverlayPanel.swift         # AI Guard + event timeline
+│       │   │   ├── AIGuard.swift
+│       │   │   ├── AICommandRouter.swift
+│       │   │   ├── VisionAnalyzer.swift
 │       │   │   ├── DrawerPanel.swift
 │       │   │   ├── KeyboardShortcutManager.swift
 │       │   │   └── NotificationManager.swift
@@ -191,8 +234,7 @@ open-ring/
 │       │   ├── RingClient/          # Ring API client (reusable)
 │       │   │   ├── RingClient.swift     # API methods
 │       │   │   ├── RingTypes.swift      # Data models
-│       │   │   ├── RingWebRTC.swift     # WebRTC session
-│       │   │   ├── LiveViewSession.swift
+│       │   │   ├── LiveViewSession.swift # WebRTC session + signaling
 │       │   │   └── KeychainManager.swift
 │       │   │
 │       │   ├── DesignSystem/        # UI components & tokens
@@ -344,8 +386,9 @@ try await RingClient.shared.setMotionDetection(deviceId: device.id, enabled: fal
 2. Receive SDP offer and ICE servers
 3. Create local peer connection with answer
 4. Exchange ICE candidates via Ring's signaling
-5. Video track attached to `RTCMTLVideoView`
+5. Frames are drawn by a custom Metal view (NV12 → RGB shader). Fit/fill, zoom and pan are applied through the Metal viewport, so the stream is always sampled at full resolution and never stretched
 6. Audio handled via WebRTC's audio session
+7. Sessions are owned by `MultiStreamManager` and shared by the popover and the pinned window through a viewer count: they start with the first viewer and stop with the last
 
 ### AI Integration
 
@@ -389,6 +432,15 @@ try await RingClient.shared.setMotionDetection(deviceId: device.id, enabled: fal
 - Try a different device
 - Ring's servers occasionally have issues
 
+**Video looks cropped**
+- You are in *fill* mode: the image covers the view and part of it is hidden. Drag to look around, or click the fit/fill button in the top bar to see the whole image
+
+**macOS keeps asking for the Keychain password after installing a new build**
+- OpenRing stores four separate Keychain items and macOS asks once per item. Click **Always Allow** (not *Allow*, which only authorizes a single read)
+- If it comes back after every rebuild, your build is ad-hoc signed. Sign it with a stable identity (see [Build from Source](#build-from-source))
+- To start clean, delete the items and log in to Ring again:
+  `for k in hardware_id refresh_token access_token access_token_expires; do security delete-generic-password -s dev.open-ring -a $k; done`
+
 **Global hotkey not working**
 - Grant Accessibility permission in System Settings
 - Check if another app uses the same shortcut
@@ -405,7 +457,7 @@ Contributions welcome! Please:
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
+3. Commit changes (`git commit -m 'feat(scope): add amazing feature'`)
 4. Push to branch (`git push origin feature/amazing`)
 5. Open a Pull Request
 
@@ -414,10 +466,20 @@ Contributions welcome! Please:
 ```bash
 git clone https://github.com/abracadabra50/open-ring.git
 cd open-ring/app
-open OpenRing.xcworkspace
+open OpenRing.xcodeproj
 ```
 
 The project uses Swift Package Manager. Dependencies are resolved automatically.
+
+All the code lives in `app/OpenRingPackage`, so you can build and test it without Xcode's UI:
+
+```bash
+cd app/OpenRingPackage
+swift build
+swift test
+```
+
+Commit messages follow the [Angular convention](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#commit): `feat(video): ...`, `fix(build): ...`, `docs(readme): ...`.
 
 ---
 
