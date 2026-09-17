@@ -21,6 +21,7 @@ MACOSX_DEPLOYMENT_TARGET = 14.0
 // Info PLIST
 // ==========================================
 GENERATE_INFOPLIST_FILE = YES
+INFOPLIST_FILE = Config/Info.plist
 
 // ==========================================
 // Entitlements
